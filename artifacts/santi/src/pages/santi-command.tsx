@@ -60,10 +60,14 @@ function nowStr() {
 
 function getSavedLanguageCode(): LanguageCode {
   if (typeof window === "undefined") return "es";
-  const saved = window.localStorage.getItem("santi-language");
-  return LANGUAGES.some((language) => language.code === saved)
-    ? (saved as LanguageCode)
-    : "es";
+  try {
+    const saved = window.localStorage.getItem("santi-language");
+    return LANGUAGES.some((language) => language.code === saved)
+      ? (saved as LanguageCode)
+      : "es";
+  } catch {
+    return "es";
+  }
 }
 
 interface FolioEntry {
@@ -275,13 +279,18 @@ export default function SantiCommand() {
   const analyzeIncident = useAnalyzeIncident();
   const createReport = useCreateReport();
   const { mutateAsync: translateUi } = useTranslateSantiUi();
+  const translationRequestRef = useRef(0);
   const { data: serverStats } = useGetStats({ query: { queryKey: getGetStatsQueryKey(), refetchInterval: 30000 } });
 
   const selectLanguage = useCallback(async (value: string) => {
+    const requestId = ++translationRequestRef.current;
     const nextLanguage = getLanguage(value);
     setLanguageCode(nextLanguage.code);
+    setUiStrings({ ...DEFAULT_UI_STRINGS });
     document.documentElement.lang = nextLanguage.htmlLang;
-    window.localStorage.setItem("santi-language", nextLanguage.code);
+    try {
+      window.localStorage.setItem("santi-language", nextLanguage.code);
+    } catch { /* Private browsing may disable persistent storage. */ }
     speechRequestRef.current += 1;
     stopAgentSpeech();
     setIsSpeaking(false);
@@ -305,7 +314,12 @@ export default function SantiCommand() {
         }
       }
     } catch {
-      window.localStorage.removeItem(cacheKey);
+      try { window.localStorage.removeItem(cacheKey); } catch { /* Storage unavailable. */ }
+    }
+
+    if (cached) {
+      setTranslationState("ready");
+      return;
     }
 
     if (!navigator.onLine) {
@@ -321,6 +335,7 @@ export default function SantiCommand() {
           strings: { ...DEFAULT_UI_STRINGS },
         },
       });
+      if (requestId !== translationRequestRef.current) return;
       const keys = Object.keys(DEFAULT_UI_STRINGS) as SantiUiKey[];
       if (!keys.every((key) => typeof result.translations[key] === "string" && result.translations[key].trim())) {
         throw new Error("La traducción no contiene todas las etiquetas.");
@@ -329,9 +344,12 @@ export default function SantiCommand() {
         keys.map((key) => [key, result.translations[key].trim()]),
       ) as SantiUiStrings;
       setUiStrings(translated);
-      window.localStorage.setItem(cacheKey, JSON.stringify(translated));
+      try {
+        window.localStorage.setItem(cacheKey, JSON.stringify(translated));
+      } catch { /* Translation still works without persistent storage. */ }
       setTranslationState("ready");
     } catch {
+      if (requestId !== translationRequestRef.current) return;
       setTranslationState(cached ? "ready" : "error");
     }
   }, [translateUi]);
@@ -634,6 +652,15 @@ export default function SantiCommand() {
              <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:isOnline?"#C8A84B":"#FF8C8C",letterSpacing:1}}>{isOnline?t("noOfficialServices"):t("offline")}</span>
           </div>
         </header>
+
+        <nav className="santi-mobile-agents" aria-label={t("agentsHeading")}>
+          {(Object.entries(AGENTS) as [AgentId, typeof AGENTS[AgentId]][]).map(([id, agent]) => (
+            <button key={id} type="button" onClick={() => { playAgentActivated(id); setChatAgent(id); }}
+              style={{color:agent.color,borderColor:`${agent.color}55`}}>
+              {agent.name}
+            </button>
+          ))}
+        </nav>
 
         {/* ── BODY ────────────────────────────────────────────── */}
         <div className="santi-layout" style={{flex:1,display:"grid",gridTemplateColumns:"256px minmax(0,1fr) 256px",overflow:"hidden"}}>
