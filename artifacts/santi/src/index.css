@@ -514,6 +514,33 @@
   }
 }
 
+.santi-mobile-agents { display: none; }
+
+@media (max-width: 760px) {
+  .santi-mobile-agents {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+    padding: 5px 10px;
+    overflow-x: auto;
+    background: #010814;
+  }
+  .santi-mobile-agents button {
+    min-height: 40px;
+    padding: 6px 10px;
+    font-size: 10px;
+    border: 1px solid;
+    border-radius: 6px;
+    background: #071525;
+    cursor: pointer;
+  }
+  .santi-translation-note {
+    display: block !important;
+    width: 100%;
+    font-size: 9px;
+  }
+}
+
 @media (min-width: 1800px) {
   .santi-layout {
     grid-template-columns: 320px minmax(0, 1fr) 320px !important;
