@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { getGetStatsQueryKey, useGetStats, useAnalyzeIncident, useCreateReport } from "@workspace/api-client-react";
+import {
+  getGetStatsQueryKey,
+  useGetStats,
+  useAnalyzeIncident,
+  useCreateReport,
+  useTranslateSantiUi,
+} from "@workspace/api-client-react";
 import { playNewReport, playAgentActivated } from "@/lib/audio";
 import {
   speakAsAgent, stopAgentSpeech,
@@ -9,6 +15,14 @@ import {
 import { useSpeechDictation } from "@/hooks/use-speech-dictation";
 import { DemoModuleDialog, PanicDemoDialog } from "@/components/demo-module-dialog";
 import { DEMO_MODULES, type DemoModuleId } from "@/components/demo-modules";
+import {
+  DEFAULT_UI_STRINGS,
+  getLanguage,
+  LANGUAGES,
+  type LanguageCode,
+  type SantiUiKey,
+  type SantiUiStrings,
+} from "@/lib/languages";
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 
@@ -44,6 +58,14 @@ function nowStr() {
   return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`;
 }
 
+function getSavedLanguageCode(): LanguageCode {
+  if (typeof window === "undefined") return "es";
+  const saved = window.localStorage.getItem("santi-language");
+  return LANGUAGES.some((language) => language.code === saved)
+    ? (saved as LanguageCode)
+    : "es";
+}
+
 interface FolioEntry {
   folio: string; tipo: string; agente: AgentId;
   sector: string; horaEntrada: string;
@@ -59,23 +81,25 @@ interface AnalysisResult {
 
 /* ─── MODAL: AGENT CHAT ─────────────────────────────────────── */
 function AgentChatModal({
-  agentId, onClose, speak, voiceEnabled, onToggleVoice,
+  agentId, language, uiStrings, onClose, speak, voiceEnabled, onToggleVoice,
 }: {
   agentId: AgentId;
+  language: ReturnType<typeof getLanguage>;
+  uiStrings: SantiUiStrings;
   onClose: () => void;
-  speak: (t: string, a: AgentId) => void;
+  speak: (t: string, a: AgentId, force?: boolean, locale?: string) => void;
   voiceEnabled: boolean;
   onToggleVoice: () => void;
 }) {
   const ag = AGENTS[agentId];
   const [msgs, setMsgs] = useState<ChatMsg[]>([
-    { role: "agent", text: `Soy ${ag.name}, asistente de IA de esta demostración. ¿Qué información general necesitas?` },
+    { role: "agent", text: `${uiStrings.chatGreeting}` },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const { listening, error: voiceInputError, toggle: toggleListening } =
-    useSpeechDictation(setInput, () => setInput(""));
+    useSpeechDictation(setInput, () => setInput(""), language.recognitionLocale);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
@@ -89,17 +113,22 @@ function AgentChatModal({
       const res = await fetch("/api/santi/agent-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId, userMessage: q }),
+      body: JSON.stringify({ agentId, userMessage: q, languageCode: language.code }),
       });
-      const data: { response?: string; error?: string } = await res.json();
+      const data: { response?: string; speechText?: string; error?: string } = await res.json();
       if (!res.ok) throw new Error(data.error || "No fue posible consultar al asistente.");
       const reply = data.response || "Sin respuesta del sistema.";
       setMsgs(p => [...p, { role: "agent", text: reply }]);
-      speak(reply, agentId);
+      speak(
+        data.speechText || reply,
+        agentId,
+        false,
+        language.indigenous ? "es-MX" : language.speechLocale,
+      );
     } catch {
       setMsgs(p => [...p, { role: "agent", text: "No pude conectar con el asistente. Puedes intentarlo de nuevo." }]);
     } finally { setLoading(false); }
-  }, [input, loading, listening, agentId, speak]);
+  }, [input, loading, listening, agentId, language, speak]);
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -112,7 +141,7 @@ function AgentChatModal({
           <div>
             <div style={{ fontFamily:"'Orbitron',monospace",fontSize:13,fontWeight:700,color:ag.color,letterSpacing:1 }}>{ag.name}</div>
             <div style={{ fontSize:10,color:"#3A5A7A",fontFamily:"'Share Tech Mono',monospace",marginTop:2 }}>{ag.role}</div>
-            <div style={{ fontSize:9,color:`${ag.color}80`,fontFamily:"'Share Tech Mono',monospace",marginTop:1 }}>🌐 {ag.lang}</div>
+            <div style={{ fontSize:9,color:`${ag.color}80`,fontFamily:"'Share Tech Mono',monospace",marginTop:1 }}>🌐 {language.label}</div>
           </div>
           <div style={{ marginLeft:"auto",display:"flex",gap:6,alignItems:"center" }}>
             <span style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:"#C8A84B" }}>IA · DEMO</span>
@@ -120,12 +149,17 @@ function AgentChatModal({
           <button type="button" onClick={onToggleVoice} aria-pressed={voiceEnabled}
             title={voiceEnabled ? "Desactivar respuestas por voz" : "Activar respuestas por voz"}
             style={{background:voiceEnabled?`${ag.color}18`:"rgba(0,0,0,.2)",border:`1px solid ${ag.color}35`,borderRadius:7,color:ag.color,fontFamily:"'Share Tech Mono',monospace",fontSize:8,padding:"7px 8px",cursor:"pointer",whiteSpace:"nowrap"}}>
-            {voiceEnabled ? "VOZ ACTIVA" : "ACTIVAR VOZ"}
+            {voiceEnabled ? uiStrings.voiceActive : uiStrings.voiceEnable}
           </button>
           <button onClick={onClose} style={{ marginLeft:8,background:"none",border:"none",color:"#3A5A7A",fontSize:18,cursor:"pointer",padding:4 }}>✕</button>
         </div>
         {/* Messages */}
         <div style={{ flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:8,scrollbarWidth:"thin" }}>
+          {language.indigenous && (
+            <div role="note" style={{padding:"8px 10px",borderRadius:8,background:"rgba(200,168,75,.08)",border:"1px solid rgba(200,168,75,.2)",color:"#F1D47B",fontSize:10,lineHeight:1.45}}>
+              {uiStrings.translationNotice}
+            </div>
+          )}
           {msgs.map((m, i) => (
             <div key={i} style={{ display:"flex",gap:8,justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
               {m.role === "agent" && (
@@ -155,21 +189,21 @@ function AgentChatModal({
             <button type="button" onClick={toggleListening} aria-label={listening ? "Detener dictado" : "Dictar mensaje"}
               aria-pressed={listening} disabled={loading}
               style={{padding:"8px 11px",background:listening?"rgba(255,23,68,.15)":`${ag.color}12`,border:`1px solid ${listening?"rgba(255,23,68,.6)":`${ag.color}40`}`,borderRadius:8,color:listening?"#FF6D6D":ag.color,fontSize:15,cursor:loading?"not-allowed":"pointer",opacity:loading?.55:1}}>
-              {listening ? "DETENER" : "MIC"}
+              {listening ? uiStrings.stopDictation : uiStrings.startDictation}
             </button>
             <input value={input} onChange={e=>setInput(e.target.value)}
               onKeyDown={e=>e.key==="Enter"&&send()}
               maxLength={2000}
               aria-label={`Mensaje para ${ag.name}`}
-              placeholder={listening ? "Escuchando… revisa el texto antes de enviarlo" : `Escribe o dicta a ${ag.name}...`}
+              placeholder={listening ? uiStrings.chatPlaceholder : `${uiStrings.chatPlaceholder} · ${ag.name}`}
               style={{ minWidth:0,flex:1,background:"rgba(0,0,0,.4)",border:`1px solid ${ag.color}30`,borderRadius:8,padding:"8px 12px",color:"#D0E8FF",fontFamily:"'Rajdhani',sans-serif",fontSize:13,outline:"none" }} />
             <button type="button" onClick={send} disabled={loading||!input.trim()||listening}
               style={{ padding:"8px 14px",background:loading?`${ag.color}20`:`${ag.color}18`,border:`1px solid ${ag.color}50`,borderRadius:8,color:ag.color,fontFamily:"'Orbitron',monospace",fontSize:10,fontWeight:700,cursor:"pointer",letterSpacing:1,transition:"all .2s",opacity:(!input.trim()||loading||listening)?.6:1 }}>
-              ENVIAR
+              {uiStrings.chatSend}
             </button>
           </div>
           <div style={{fontSize:9,color:"#526A80",lineHeight:1.4,marginTop:7}}>
-            El texto se procesa con IA. El micrófono solo se activa al pulsar y el navegador procesa el dictado; no ingreses datos personales reales ni información de incidentes activos.
+            {uiStrings.chatNotice}
           </div>
         </div>
       </div>
@@ -196,6 +230,12 @@ export default function SantiCommand() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const speechRequestRef = useRef(0);
+  const [languageCode, setLanguageCode] = useState<LanguageCode>(getSavedLanguageCode);
+  const [uiStrings, setUiStrings] = useState<SantiUiStrings>({ ...DEFAULT_UI_STRINGS });
+  const [translationState, setTranslationState] = useState<"ready"|"loading"|"offline"|"error">("ready");
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  const language = getLanguage(languageCode);
+  const t = (key: SantiUiKey) => uiStrings[key] ?? DEFAULT_UI_STRINGS[key];
 
   /* State */
   const [activeTab, setActiveTab] = useState<"report"|"analysis"|"trace"|"log">("report");
@@ -220,7 +260,7 @@ export default function SantiCommand() {
     listening: reportListening,
     error: reportVoiceError,
     toggle: toggleReportDictation,
-  } = useSpeechDictation(handleReportTranscript, prepareReportDictation);
+  } = useSpeechDictation(handleReportTranscript, prepareReportDictation, language.recognitionLocale);
 
   /* Current incident state */
   const [currentFolio, setCurrentFolio] = useState<FolioEntry|null>(null);
@@ -234,7 +274,83 @@ export default function SantiCommand() {
 
   const analyzeIncident = useAnalyzeIncident();
   const createReport = useCreateReport();
+  const { mutateAsync: translateUi } = useTranslateSantiUi();
   const { data: serverStats } = useGetStats({ query: { queryKey: getGetStatsQueryKey(), refetchInterval: 30000 } });
+
+  const selectLanguage = useCallback(async (value: string) => {
+    const nextLanguage = getLanguage(value);
+    setLanguageCode(nextLanguage.code);
+    document.documentElement.lang = nextLanguage.htmlLang;
+    window.localStorage.setItem("santi-language", nextLanguage.code);
+    speechRequestRef.current += 1;
+    stopAgentSpeech();
+    setIsSpeaking(false);
+
+    if (nextLanguage.code === "es") {
+      setUiStrings({ ...DEFAULT_UI_STRINGS });
+      setTranslationState("ready");
+      return;
+    }
+
+    const cacheKey = `santi-ui:${nextLanguage.code}`;
+    let cached: SantiUiStrings | null = null;
+    try {
+      const raw = window.localStorage.getItem(cacheKey);
+      if (raw) {
+        const candidate = JSON.parse(raw) as Record<string, unknown>;
+        const keys = Object.keys(DEFAULT_UI_STRINGS) as SantiUiKey[];
+        if (keys.every((key) => typeof candidate[key] === "string" && candidate[key])) {
+          cached = Object.fromEntries(keys.map((key) => [key, candidate[key]])) as SantiUiStrings;
+          setUiStrings(cached);
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(cacheKey);
+    }
+
+    if (!navigator.onLine) {
+      setTranslationState(cached ? "ready" : "offline");
+      return;
+    }
+
+    setTranslationState("loading");
+    try {
+      const result = await translateUi({
+        data: {
+          languageCode: nextLanguage.code as Exclude<LanguageCode, "es">,
+          strings: { ...DEFAULT_UI_STRINGS },
+        },
+      });
+      const keys = Object.keys(DEFAULT_UI_STRINGS) as SantiUiKey[];
+      if (!keys.every((key) => typeof result.translations[key] === "string" && result.translations[key].trim())) {
+        throw new Error("La traducción no contiene todas las etiquetas.");
+      }
+      const translated = Object.fromEntries(
+        keys.map((key) => [key, result.translations[key].trim()]),
+      ) as SantiUiStrings;
+      setUiStrings(translated);
+      window.localStorage.setItem(cacheKey, JSON.stringify(translated));
+      setTranslationState("ready");
+    } catch {
+      setTranslationState(cached ? "ready" : "error");
+    }
+  }, [translateUi]);
+
+  useEffect(() => {
+    document.documentElement.lang = language.htmlLang;
+    if (language.code !== "es") void selectLanguage(language.code);
+  }, []);
+
+  useEffect(() => {
+    const online = () => setIsOnline(true);
+    const offline = () => setIsOnline(false);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+    };
+  }, []);
 
   const toggleVoice = useCallback(() => {
     if (voiceEnabled) {
@@ -269,8 +385,14 @@ export default function SantiCommand() {
   /* ── Map ── */
   useEffect(()=>{
     if(!mapRef.current||mapInst.current) return;
-    const map=L.map(mapRef.current,{zoomControl:false}).setView([18.8405,-99.2328],12);
+    const map=L.map(mapRef.current,{
+      zoomControl:true,
+      touchZoom:true,
+      scrollWheelZoom:true,
+      doubleClickZoom:true,
+    }).setView([18.8405,-99.2328],12);
     mapInst.current=map;
+    map.zoomControl?.setPosition("bottomright");
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
       maxZoom:19,
@@ -288,12 +410,11 @@ export default function SantiCommand() {
         radius:7,color:"#00E5FF",fillColor:"#00E5FF",fillOpacity:.8,weight:2,
       }).addTo(map).bindPopup("Ubicación elegida manualmente para esta demostración").openPopup();
     });
-    L.control.zoom({position:"bottomright"}).addTo(map);
     return ()=>{map.remove();mapInst.current=null;selectedLocationMarkerRef.current=null;};
   },[]);
 
   /* ── Speech ── */
-  const speak=useCallback((text:string,agentId:AgentId,force=false)=>{
+  const speak=useCallback((text:string,agentId:AgentId,force=false,locale=language.speechLocale)=>{
     setSpeechAgent(agentId);
     setSpeechText(text);
     if (!voiceEnabled && !force) {
@@ -304,13 +425,13 @@ export default function SantiCommand() {
     const requestId = ++speechRequestRef.current;
     const started = speakAsAgent(text, agentId, () => {
       if (requestId === speechRequestRef.current) setIsSpeaking(false);
-    });
+    }, locale);
     setIsSpeaking(started);
     if (!started) {
       setVoiceEnabled(false);
       setSpeechText("La voz no está disponible en este navegador. Puedes continuar por escrito.");
     }
-  },[voiceEnabled]);
+  },[voiceEnabled,language.speechLocale]);
 
   /* ── Send Report ── */
   const sendReport=useCallback(async()=>{
@@ -350,7 +471,7 @@ export default function SantiCommand() {
     };
     try {
       analysis=await analyzeIncident.mutateAsync({
-        data:{tipo:rtype,descripcion,sector,folio,agente:agentId},
+        data:{tipo:rtype,descripcion,sector,folio,agente:agentId,languageCode:language.code},
       });
     } catch {
       setTraceLog(previous=>[...previous,{time:nowStr(),event:"Resumen IA no disponible; se conserva como información no verificada"}]);
@@ -386,13 +507,13 @@ export default function SantiCommand() {
     } finally {
       setAnalyzing(false);
     }
-  },[rtype,rdesc,rSector,selectedCoords,reportListening,speak,analyzeIncident,createReport]);
+  },[rtype,rdesc,rSector,selectedCoords,reportListening,speak,analyzeIncident,createReport,language.code]);
 
   const agC = (id:AgentId)=>AGENTS[id].color;
 
   /* ── RENDER ── */
   return (
-    <div onMouseDown={()=>{if(!audioInit.current){audioInit.current=true;}}}
+    <div className="santi-app" lang={language.htmlLang} onMouseDown={()=>{if(!audioInit.current){audioInit.current=true;}}}
       style={{fontFamily:"'Rajdhani',sans-serif",height:"100vh",overflow:"hidden",background:"#000509",color:"#C8D8E8",position:"relative"}}>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"/>
       <style>{`
@@ -429,13 +550,13 @@ export default function SantiCommand() {
         <div style={{position:"fixed",inset:0,zIndex:3000,background:"rgba(0,5,9,.94)",backdropFilter:"blur(12px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <section role="dialog" aria-modal="true" aria-labelledby="santi-welcome-title"
             style={{width:"min(700px, 100%)",padding:"clamp(24px, 5vw, 52px)",borderRadius:20,border:"1px solid rgba(200,168,75,.35)",background:"radial-gradient(ellipse at top, rgba(200,168,75,.12), rgba(4,15,29,.98) 65%)",boxShadow:"0 24px 90px rgba(0,0,0,.55)",textAlign:"center"}}>
-            <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:"#C8A84B",letterSpacing:3,marginBottom:18}}>DEMOSTRACIÓN INTERACTIVA · DATOS SIMULADOS</div>
-            <h1 id="santi-welcome-title" style={{fontFamily:"'Orbitron',monospace",fontSize:"clamp(28px, 5vw, 48px)",lineHeight:1.2,letterSpacing:2,margin:"0 0 14px",color:"#F1D47B"}}>Bienvenido a SANTI NEXUS</h1>
-            <p style={{maxWidth:530,margin:"0 auto 12px",fontSize:16,lineHeight:1.6,color:"#C8D8E8"}}>
-              SANTI y sus agentes son asistentes de inteligencia artificial. Esta demostración no está conectada a servicios oficiales, unidades ni alertas reales.
+             <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:"#C8A84B",letterSpacing:3,marginBottom:18}}>{t("welcomeKicker")}</div>
+             <h1 id="santi-welcome-title" style={{fontFamily:"'Orbitron',monospace",fontSize:"clamp(28px, 5vw, 48px)",lineHeight:1.2,letterSpacing:2,margin:"0 0 14px",color:"#F1D47B"}}>{t("welcomeTitle")}</h1>
+             <p style={{maxWidth:530,margin:"0 auto 12px",fontSize:16,lineHeight:1.6,color:"#C8D8E8"}}>
+               {t("welcomeDescription")}
             </p>
             <p style={{maxWidth:530,margin:"0 auto 26px",fontSize:13,lineHeight:1.6,color:"#86A1B8"}}>
-              Puedes escribir o dictar tu consulta. El micrófono solo se activa cuando lo pulsas; el navegador procesa la transcripción. No incluyas datos personales reales ni detalles de incidentes activos.
+               {t("welcomePrivacy")}
             </p>
             <div style={{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap"}}>
               <button type="button" onClick={()=>{
@@ -443,54 +564,56 @@ export default function SantiCommand() {
                 setVoiceEnabled(true);
                 speak("Bienvenido a SANTI NEXUS. Esta es una demostración interactiva con asistentes de inteligencia artificial y datos simulados.", "santi", true);
               }}
-                style={{padding:"12px 20px",borderRadius:9,border:"1px solid rgba(200,168,75,.65)",background:"rgba(200,168,75,.16)",color:"#F1D47B",fontFamily:"'Orbitron',monospace",fontSize:11,fontWeight:700,letterSpacing:1,cursor:"pointer"}}>
-                ESCUCHAR BIENVENIDA
+                 style={{padding:"12px 20px",borderRadius:9,border:"1px solid rgba(200,168,75,.65)",background:"rgba(200,168,75,.16)",color:"#F1D47B",fontFamily:"'Orbitron',monospace",fontSize:11,fontWeight:700,letterSpacing:1,cursor:"pointer"}}>
+                 {t("listenWelcome")}
               </button>
               <button type="button" onClick={()=>{stopAgentSpeech();setVoiceEnabled(false);setShowWelcome(false);}}
                 style={{padding:"12px 20px",borderRadius:9,border:"1px solid rgba(134,161,184,.35)",background:"rgba(8,23,39,.8)",color:"#C8D8E8",fontFamily:"'Orbitron',monospace",fontSize:11,fontWeight:700,letterSpacing:1,cursor:"pointer"}}>
-                CONTINUAR EN SILENCIO
+                 {t("continueSilent")}
               </button>
             </div>
           </section>
         </div>
       )}
-      {chatAgent && <AgentChatModal agentId={chatAgent} onClose={()=>setChatAgent(null)} speak={speak} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice}/>}
+      {chatAgent && <AgentChatModal agentId={chatAgent} language={language} uiStrings={uiStrings} onClose={()=>setChatAgent(null)} speak={speak} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice}/>}
       {openModule && <DemoModuleDialog moduleId={openModule} onClose={()=>setOpenModule(null)}/>}
       {panicDemoOpen && <PanicDemoDialog onClose={()=>setPanicDemoOpen(false)}/>}
 
-      <button type="button" onClick={()=>setPanicDemoOpen(true)} aria-label="Abrir simulación de Código Violeta"
+      <button type="button" className="santi-panic-button" onClick={()=>setPanicDemoOpen(true)} aria-label={t("panicButton")}
         style={{position:"fixed",right:18,bottom:18,zIndex:1200,border:"1px solid rgba(233,30,140,.72)",borderRadius:999,padding:"12px 16px",background:"rgba(43,8,32,.96)",color:"#FFD6E5",fontFamily:"'Orbitron',monospace",fontSize:9,fontWeight:700,letterSpacing:.5,boxShadow:"0 4px 20px rgba(0,0,0,.45)",cursor:"pointer"}}>
-        SIMULAR CÓDIGO VIOLETA
+        {t("panicButton")}
       </button>
 
-      <div style={{height:"100vh",display:"flex",flexDirection:"column"}}>
+      <div className="santi-frame" style={{height:"100vh",display:"flex",flexDirection:"column"}}>
 
         {/* ── HEADER ─────────────────────────────────────────── */}
-        <header style={{height:52,flexShrink:0,display:"flex",alignItems:"center",padding:"0 18px",gap:16,background:"rgba(1,8,20,.97)",borderBottom:"1px solid rgba(200,168,75,.1)",position:"relative",zIndex:100}}>
+        <header className="santi-header" style={{height:52,flexShrink:0,display:"flex",alignItems:"center",padding:"0 18px",gap:16,background:"rgba(1,8,20,.97)",borderBottom:"1px solid rgba(200,168,75,.1)",position:"relative",zIndex:100}}>
           <div style={{position:"absolute",bottom:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(200,168,75,.25) 30%,rgba(200,168,75,.25) 70%,transparent)"}}/>
           {/* Logo */}
           <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
             <div style={{width:34,height:34,borderRadius:7,background:"linear-gradient(135deg,rgba(200,168,75,.15),rgba(10,79,212,.1))",border:"1px solid rgba(200,168,75,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🛡️</div>
             <div>
               <div style={{fontFamily:"'Orbitron',monospace",fontWeight:900,fontSize:13,letterSpacing:4,background:"linear-gradient(90deg,#C8A84B,#E2C46A)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SANTI · C.M.O.</div>
-              <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:"#2A4A6A",letterSpacing:1.5,marginTop:1}}>DEMO · SIN ENLACE INSTITUCIONAL</div>
+               <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:"#2A4A6A",letterSpacing:1.5,marginTop:1}}>{t("demoBadge")}</div>
             </div>
           </div>
           {/* Divider */}
           <div style={{width:1,height:30,background:"rgba(200,168,75,.1)",flexShrink:0}}/>
           {/* Language selector */}
           <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-            <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:"#7189A0"}}>IDIOMA</span>
-            <select aria-label="Idioma de la demostración" title="Náhuatl y Mixteco requieren traducción revisada por hablantes"
-              defaultValue="es" style={{maxWidth:150,background:"#071525",border:"1px solid rgba(200,168,75,.22)",borderRadius:6,padding:"5px 7px",color:"#C8D8E8",fontFamily:"'Share Tech Mono',monospace",fontSize:8}}>
-              <option value="es">Español</option>
-              <option value="nahuatl" disabled>Náhuatl · traducción pendiente</option>
-              <option value="mixteco" disabled>Mixteco · traducción pendiente</option>
+             <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:"#7189A0"}}>{t("language")}</span>
+             <select aria-label={t("language")} title={language.indigenous ? t("translationNotice") : t("translationLoading")}
+               value={languageCode} onChange={(event) => void selectLanguage(event.target.value)}
+               style={{maxWidth:190,minHeight:36,background:"#071525",border:"1px solid rgba(200,168,75,.22)",borderRadius:6,padding:"5px 7px",color:"#C8D8E8",fontFamily:"'Share Tech Mono',monospace",fontSize:9}}>
+               {LANGUAGES.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
             </select>
           </div>
+           {language.indigenous && <span className="santi-translation-note">{t("translationNotice")}</span>}
+           {translationState === "loading" && <span role="status" className="santi-translation-loading">{t("translationLoading")}</span>}
+           {translationState === "error" && <span role="status" className="santi-translation-loading">TRADUCCIÓN NO DISPONIBLE · ESPAÑOL</span>}
           {/* Connected-data summary */}
-          <div style={{display:"flex",gap:14,alignItems:"center"}}>
-            {[{v:stats.units??"—",l:"UNIDADES CONECTADAS",c:"#00E676"},{v:stats.reports,l:"REGISTROS EN BD",c:"#00E5FF"},{v:"—",l:"RIESGO",c:"#AAB8C2"}].map(s=>(
+           <div className="santi-header-stats" style={{display:"flex",gap:14,alignItems:"center"}}>
+             {[{v:stats.units??"—",l:t("connectedUnits"),c:"#00E676"},{v:stats.reports,l:t("databaseRecords"),c:"#00E5FF"},{v:"—",l:t("risk"),c:"#AAB8C2"}].map(s=>(
               <div key={s.l} style={{textAlign:"center"}}>
                 <div style={{fontFamily:"'Orbitron',monospace",fontSize:14,fontWeight:700,color:s.c,lineHeight:1}}>{s.v}</div>
                 <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:"#2A4A6A",letterSpacing:.5,marginTop:2}}>{s.l}</div>
@@ -506,20 +629,20 @@ export default function SantiCommand() {
             <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:"#2A4A6A",letterSpacing:.5}}>{clockDate}</div>
           </div>
           {/* Live indicator */}
-          <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:999,background:"rgba(200,168,75,.08)",border:"1px solid rgba(200,168,75,.24)",flexShrink:0}}>
+           <div className="santi-network-status" style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:999,background:isOnline?"rgba(200,168,75,.08)":"rgba(255,109,109,.1)",border:`1px solid ${isOnline?"rgba(200,168,75,.24)":"rgba(255,109,109,.35)"}`,flexShrink:0}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:"#C8A84B"}}/>
-            <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:"#C8A84B",letterSpacing:1}}>SIN SERVICIOS OFICIALES</span>
+             <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:isOnline?"#C8A84B":"#FF8C8C",letterSpacing:1}}>{isOnline?t("noOfficialServices"):t("offline")}</span>
           </div>
         </header>
 
         {/* ── BODY ────────────────────────────────────────────── */}
-        <div style={{flex:1,display:"grid",gridTemplateColumns:"256px 1fr 256px",overflow:"hidden"}}>
+        <div className="santi-layout" style={{flex:1,display:"grid",gridTemplateColumns:"256px minmax(0,1fr) 256px",overflow:"hidden"}}>
 
           {/* ── LEFT ──────────────────────────────────────────── */}
-          <aside style={{display:"flex",flexDirection:"column",background:"rgba(1,8,20,.95)",borderRight:"1px solid rgba(200,168,75,.08)",overflow:"hidden"}}>
+          <aside className="santi-left-aside" style={{display:"flex",flexDirection:"column",background:"rgba(1,8,20,.95)",borderRight:"1px solid rgba(200,168,75,.08)",overflow:"hidden"}}>
             {/* Agents */}
             <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(200,168,75,.08)",flexShrink:0}}>
-              <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:"#2A4A6A",letterSpacing:2,marginBottom:8,textTransform:"uppercase"}}>Agentes IA · Haz clic para consultar</div>
+              <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:"#2A4A6A",letterSpacing:2,marginBottom:8,textTransform:"uppercase"}}>{t("agentsHeading")}</div>
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
                 {(Object.entries(AGENTS) as [AgentId, typeof AGENTS[AgentId]][]).map(([id,ag])=>(
                   <div key={id} className="agent-card"
@@ -548,14 +671,14 @@ export default function SantiCommand() {
               <div style={{fontSize:11,lineHeight:1.6,color:"#8AAAC8"}}>{speechText.length>120?speechText.slice(0,120)+"...":speechText}</div>
               <button type="button" onClick={toggleVoice} aria-pressed={voiceEnabled}
                 style={{marginTop:8,padding:"5px 8px",borderRadius:6,border:`1px solid ${voiceEnabled?"rgba(0,230,118,.45)":"rgba(200,168,75,.3)"}`,background:voiceEnabled?"rgba(0,230,118,.08)":"rgba(0,0,0,.22)",color:voiceEnabled?"#00E676":"#C8A84B",fontFamily:"'Share Tech Mono',monospace",fontSize:8,letterSpacing:.8,cursor:"pointer"}}>
-                {voiceEnabled ? "RESPUESTAS POR VOZ ACTIVAS" : "ACTIVAR RESPUESTAS POR VOZ"}
+                {voiceEnabled ? t("voiceActive") : t("voiceEnable")}
               </button>
             </div>
 
             {/* Folio list */}
             <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
               <div style={{padding:"8px 12px 5px",borderTop:"1px solid rgba(200,168,75,.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-                <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:"#2A4A6A",letterSpacing:2}}>REGISTRO DE FOLIOS</span>
+                 <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:"#2A4A6A",letterSpacing:2}}>{t("folioHeading")}</span>
                 <span style={{fontFamily:"'Orbitron',monospace",fontSize:10,color:"#C8A84B",fontWeight:700}}>{folioList.length}</span>
               </div>
               <div style={{flex:1,overflowY:"auto",padding:"0 12px 10px"}}>
@@ -575,15 +698,15 @@ export default function SantiCommand() {
                     </div>
                   );
                 })}
-                {folioList.length===0&&<div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:"#7189A0",textAlign:"center",marginTop:16,lineHeight:1.8}}>Sin borradores en esta sesión<br/>Los datos de la demo no son registros oficiales</div>}
+                {folioList.length===0&&<div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:"#7189A0",textAlign:"center",marginTop:16,lineHeight:1.8}}>{t("emptyFolios")}<br/>Los datos de la demo no son registros oficiales</div>}
               </div>
             </div>
           </aside>
 
           {/* ── CENTER ────────────────────────────────────────── */}
-          <div style={{display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
+          <div className="santi-center" style={{display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
             {/* Map area */}
-            <div style={{flex:1,position:"relative",minHeight:0}}>
+            <div className="santi-map-area" style={{flex:1,position:"relative",minHeight:0}}>
               {/* HUD */}
               <div style={{position:"absolute",top:10,left:10,display:"flex",gap:7,zIndex:400,pointerEvents:"all"}}>
                 {["📍 TEMIXCO · MAPA BASE","CAPAS OPERATIVAS: NINGUNA","UBICACIÓN: SELECCIÓN MANUAL"].map(l=>(
@@ -595,37 +718,37 @@ export default function SantiCommand() {
               <div style={{position:"absolute",bottom:8,right:8,zIndex:400}}>
                 <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:"#2A4A6A",background:"rgba(1,8,20,.85)",padding:"4px 9px",borderRadius:5,border:"1px solid rgba(200,168,75,.08)"}}>{coords}</div>
               </div>
-              <div ref={mapRef} style={{width:"100%",height:"100%"}}/>
+              <div ref={mapRef} className="santi-map" style={{width:"100%",height:"100%"}}/>
             </div>
 
             {/* ── BOTTOM TABS ─── */}
-            <div style={{height:230,flexShrink:0,background:"rgba(1,8,20,.97)",borderTop:"1px solid rgba(200,168,75,.1)"}}>
+            <div className="santi-bottom-tabs" style={{height:230,flexShrink:0,background:"rgba(1,8,20,.97)",borderTop:"1px solid rgba(200,168,75,.1)"}}>
               {/* Tab bar */}
               <div style={{height:34,display:"flex",alignItems:"center",borderBottom:"1px solid rgba(200,168,75,.08)",paddingLeft:4}}>
-                {([["report","📋 REPORTE"],["analysis","⚡ ANÁLISIS IA"],["trace","🗺 TRAZABILIDAD"],["log","📡 BITÁCORA"]] as [typeof activeTab, string][]).map(([tab,label])=>(
+                {([["report",t("tabReport")],["analysis",t("tabAnalysis")],["trace",t("tabTrace")],["log",t("tabLog")]] as [typeof activeTab, string][]).map(([tab,label])=>(
                   <button key={tab} className={`tab-btn${activeTab===tab?" active":""}`} onClick={()=>setActiveTab(tab)}>{label}</button>
                 ))}
               </div>
               {/* Tab content */}
-              <div style={{height:196,overflow:"hidden"}}>
+              <div className="santi-tab-content" style={{height:196,overflow:"hidden"}}>
                 {/* REPORTE */}
                 {activeTab==="report"&&(
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",height:"100%",gap:0}}>
+                   <div className="santi-report-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",height:"100%",gap:0}}>
                     <div style={{padding:"8px 12px",borderRight:"1px solid rgba(200,168,75,.08)",overflowY:"auto"}}>
                       <div style={{display:"flex",flexDirection:"column",gap:5}}>
                         <select className="rselect" value={rtype} onChange={e=>setRtype(e.target.value)}>
-                          <option value="">Tipo de incidente *</option>
+                           <option value="">{t("incidentType")}</option>
                           {CRIME_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                         </select>
-                        <input className="rselect" value={rSector} onChange={e=>setRSector(e.target.value)} maxLength={120} placeholder="Sector o referencia general (opcional)"/>
+                         <input className="rselect" value={rSector} onChange={e=>setRSector(e.target.value)} maxLength={120} placeholder={t("sectorPlaceholder")}/>
                         <div style={{fontSize:9,color:selectedCoords?"#77D7E7":"#7189A0",lineHeight:1.4}}>
-                          {selectedCoords?"Ubicación seleccionada manualmente en el mapa.":"Sin ubicación. Puedes elegir un punto en el mapa; no se usa GPS."}
+                           {selectedCoords?t("selectedLocation"):t("noLocation")}
                         </div>
                         <div style={{display:"flex",gap:5,alignItems:"stretch"}}>
-                          <textarea className="rtexta" rows={2} style={{fontSize:12,flex:1,minWidth:0}} placeholder="Descripción ficticia para la demostración..." value={rdesc} onChange={e=>setRdesc(e.target.value)}/>
+                           <textarea className="rtexta" rows={2} style={{fontSize:12,flex:1,minWidth:0}} placeholder={t("reportDescription")} value={rdesc} onChange={e=>setRdesc(e.target.value)}/>
                           <button type="button" onClick={toggleReportDictation} aria-label={reportListening?"Detener dictado del reporte":"Dictar descripción del reporte"} aria-pressed={reportListening}
                             style={{minWidth:58,padding:"6px",background:reportListening?"rgba(255,23,68,.12)":"rgba(0,229,255,.06)",border:`1px solid ${reportListening?"rgba(255,23,68,.55)":"rgba(0,229,255,.22)"}`,borderRadius:6,color:reportListening?"#FF6D6D":"#00E5FF",fontFamily:"'Share Tech Mono',monospace",fontSize:8,cursor:"pointer"}}>
-                            {reportListening?"DETENER":"MIC"}
+                             {reportListening?t("stopDictation"):t("startDictation")}
                           </button>
                         </div>
                         {reportVoiceError&&<div role="status" style={{fontSize:9,color:"#FF8C8C"}}>{reportVoiceError}</div>}
@@ -634,7 +757,7 @@ export default function SantiCommand() {
                         </div>
                         <button onClick={sendReport} disabled={analyzing||!rtype||reportListening}
                           style={{padding:"8px",background:analyzing?"rgba(200,168,75,.06)":"linear-gradient(135deg,#C8A84B,#8A6A20)",border:"none",borderRadius:6,cursor:analyzing||!rtype?"not-allowed":"pointer",fontFamily:"'Orbitron',monospace",fontSize:9,fontWeight:700,letterSpacing:1,color:analyzing?"#3A5A7A":"#000",transition:"all .2s",opacity:!rtype?.5:1}}>
-                          {analyzing?"PROCESANDO DEMO...":"GUARDAR BORRADOR DEMO"}
+                           {analyzing?t("processingDraft"):t("saveDraft")}
                         </button>
                       </div>
                     </div>
@@ -758,7 +881,7 @@ export default function SantiCommand() {
           </div>
 
           {/* ── RIGHT ─────────────────────────────────────────── */}
-          <aside style={{display:"flex",flexDirection:"column",background:"rgba(1,8,20,.95)",borderLeft:"1px solid rgba(200,168,75,.08)",overflowY:"auto",scrollbarWidth:"thin"}}>
+          <aside className="santi-right-aside" style={{display:"flex",flexDirection:"column",background:"rgba(1,8,20,.95)",borderLeft:"1px solid rgba(200,168,75,.08)",overflowY:"auto",scrollbarWidth:"thin"}}>
             {/* Stats */}
             <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(200,168,75,.08)",display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,flexShrink:0}}>
               {[{v:stats.units??"—",l:"UNIDADES CONECTADAS",c:"#00E676"},{v:stats.reports,l:"REGISTROS EN BD",c:"#00E5FF"},{v:"—",l:"RIESGO",c:"#AAB8C2"},{v:"—",l:"RESPUESTA",c:"#C8A84B"}].map(s=>(

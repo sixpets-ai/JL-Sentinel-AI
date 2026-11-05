@@ -391,3 +391,143 @@
     inset: -1px;
   }
 }
+
+.santi-app,
+.santi-frame {
+  height: 100dvh !important;
+}
+
+.santi-translation-note,
+.santi-translation-loading {
+  max-width: 250px;
+  color: #f1d47b;
+  font: 9px/1.35 "Share Tech Mono", monospace;
+}
+
+.santi-map .leaflet-control-zoom a {
+  width: 44px;
+  height: 44px;
+  line-height: 42px;
+}
+
+.santi-panic-button {
+  min-height: 48px;
+  max-width: calc(100vw - 24px);
+  touch-action: manipulation;
+}
+
+.santi-layout {
+  min-height: 0;
+}
+
+@media (max-width: 1100px) {
+  .santi-layout {
+    grid-template-columns: minmax(210px, 240px) minmax(0, 1fr) !important;
+  }
+
+  .santi-right-aside {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .santi-header {
+    height: auto !important;
+    min-height: 68px;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 7px !important;
+    padding: 6px 10px !important;
+  }
+
+  .santi-header-stats,
+  .santi-translation-note {
+    display: none !important;
+  }
+
+  .santi-header select {
+    max-width: min(190px, 48vw) !important;
+    min-height: 40px;
+  }
+
+  .santi-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .santi-left-aside,
+  .santi-right-aside {
+    display: none !important;
+  }
+
+  .santi-center {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .santi-map-area {
+    min-height: 190px !important;
+  }
+
+  .santi-bottom-tabs {
+    height: min(42dvh, 330px) !important;
+    min-height: 260px;
+  }
+
+  .santi-bottom-tabs > div:first-child {
+    overflow-x: auto;
+  }
+
+  .santi-bottom-tabs .tab-btn {
+    min-width: max-content;
+    min-height: 42px;
+    padding: 0 11px;
+    font-size: 8px;
+  }
+
+  .santi-tab-content {
+    height: calc(min(42dvh, 330px) - 42px) !important;
+    min-height: 218px;
+    overflow-y: auto !important;
+  }
+
+  .santi-report-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    height: auto !important;
+    min-height: 100%;
+    overflow-y: auto;
+  }
+
+  .santi-report-grid > div {
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(200, 168, 75, .08);
+    padding: 10px 12px !important;
+  }
+
+  .santi-panic-button {
+    right: 12px !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    min-height: 50px;
+    padding: 10px 12px !important;
+    font-size: clamp(8px, 2.4vw, 10px) !important;
+  }
+}
+
+@media (min-width: 1800px) {
+  .santi-layout {
+    grid-template-columns: 320px minmax(0, 1fr) 320px !important;
+  }
+
+  .santi-header {
+    min-height: 60px;
+    padding-inline: 26px !important;
+    gap: 20px !important;
+  }
+
+  .santi-map .leaflet-control-zoom a {
+    width: 48px;
+    height: 48px;
+    line-height: 46px;
+  }
+}
