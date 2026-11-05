@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { VitePWA } from "vite-plugin-pwa";
 
 const rawPort = process.env.PORT;
 
@@ -26,11 +27,60 @@ if (!basePath) {
   );
 }
 
+const pwaBasePath = basePath.endsWith("/") ? basePath : `${basePath}/`;
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "pwa-icon-180.png", "pwa-icon-192.png", "pwa-icon-512.png"],
+      manifest: {
+        name: "SANTI · Centro de Mando Operativo",
+        short_name: "SANTI",
+        description: "Demostración interactiva con asistentes de IA y datos simulados.",
+        lang: "es-MX",
+        start_url: pwaBasePath,
+        scope: pwaBasePath,
+        display: "standalone",
+        orientation: "any",
+        background_color: "#000509",
+        theme_color: "#010814",
+        icons: [
+          { src: `${pwaBasePath}pwa-icon-192.png`, sizes: "192x192", type: "image/png" },
+          { src: `${pwaBasePath}pwa-icon-512.png`, sizes: "512x512", type: "image/png", purpose: "any maskable" },
+        ],
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/santi\/(stats|reports)$/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "santi-demo-data",
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 10, maxAgeSeconds: 86400 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "santi-fonts",
+              expiration: { maxEntries: 16, maxAgeSeconds: 2592000 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+    }),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
