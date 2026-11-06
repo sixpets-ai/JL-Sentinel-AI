@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { db, incidentReports } from "@workspace/db";
 import { desc } from "drizzle-orm";
 import { z } from "zod";
+import { redis, cachedJson } from "../infrastructure/redis";
 
 export const TOPICS = ["earthquake", "flood", "wildfire", "humanitarian"] as const;
 export type Topic = typeof TOPICS[number];
@@ -157,6 +158,23 @@ async function collect(topic: Topic): Promise<Snapshot> {
 }
 
 export async function getSnapshot(topic: Topic): Promise<Snapshot> {
+  const key = `osint:v2:${topic}`;
+  const shared = await redis.get(`santi:cache:${key}`);
+  if (shared) {
+    const value = JSON.parse(shared) as Snapshot;
+    return { ...value, cached: true, sources: value.sources.map(source =>
+      source.status === "live" ? { ...source, status: "cached" as const } : source) };
+  }
+  return cachedJson(key, 60, async () => {
+    // Rate budget is shared across workers AND topics, not one per process.
+    if (!await redis.set("santi:osint:upstream-budget", "1", { NX: true, EX: 15 })) {
+      return { topic, fetchedAt: new Date().toISOString(), cached: false, events: [], notice: NOTICE,
+        sources: [{ name: "Consultas públicas", status: "unavailable", detail: "Presupuesto compartido de consultas; reintenta en 15 segundos." }] } satisfies Snapshot;
+    }
+    return getLocalSnapshot(topic);
+  });
+}
+async function getLocalSnapshot(topic: Topic): Promise<Snapshot> {
   const saved = cache.get(topic);
   if (saved && saved.expires > Date.now()) return {
     ...saved.data, cached: true,

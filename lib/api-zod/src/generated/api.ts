@@ -8,6 +8,1037 @@
 import * as zod from 'zod';
 
 
+export const getPatternAnalysisQuerySourceDefault = `demo`;
+export const getPatternAnalysisQueryZoneDefault = `all`;
+export const getPatternAnalysisQueryWindowDaysDefault = 90;
+export const getPatternAnalysisQueryThresholdDefault = 0.8;
+export const getPatternAnalysisQueryThresholdMin = 0.5;
+export const getPatternAnalysisQueryThresholdMax = 1;
+
+
+
+export const GetPatternAnalysisQueryParams = zod.object({
+  "source": zod.enum(['demo', 'portal']).default(getPatternAnalysisQuerySourceDefault),
+  "zone": zod.enum(['all', 'centro', 'norte', 'sur']).default(getPatternAnalysisQueryZoneDefault),
+  "windowDays": zod.union([zod.literal(30),zod.literal(90),zod.literal(180)]).default(getPatternAnalysisQueryWindowDaysDefault),
+  "threshold": zod.coerce.number().min(getPatternAnalysisQueryThresholdMin).max(getPatternAnalysisQueryThresholdMax).default(getPatternAnalysisQueryThresholdDefault)
+})
+
+export const getPatternAnalysisResponseCellsItemDayMin = 0;
+export const getPatternAnalysisResponseCellsItemDayMax = 6;
+
+export const getPatternAnalysisResponseCellsItemHourMin = 0;
+export const getPatternAnalysisResponseCellsItemHourMax = 23;
+
+export const getPatternAnalysisResponseCellsItemCountMin = 0;
+
+export const getPatternAnalysisResponseLinksItemSimilarityMin = 0;
+export const getPatternAnalysisResponseLinksItemSimilarityMax = 1;
+
+
+
+export const GetPatternAnalysisResponse = zod.object({
+  "source": zod.enum(['demo', 'portal']),
+  "timestampBasis": zod.string(),
+  "generatedAt": zod.string(),
+  "timezone": zod.string(),
+  "windowStart": zod.string(),
+  "windowEnd": zod.string(),
+  "zone": zod.string(),
+  "threshold": zod.number(),
+  "totalAvailable": zod.number().int(),
+  "sampled": zod.number().int(),
+  "matched": zod.number().int(),
+  "excluded": zod.number().int(),
+  "truncated": zod.boolean(),
+  "linksTruncated": zod.boolean(),
+  "method": zod.string(),
+  "warnings": zod.array(zod.string()),
+  "incidents": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "zone": zod.string(),
+  "categoryCode": zod.string(),
+  "method": zod.string(),
+  "target": zod.string(),
+  "timestamp": zod.string(),
+  "lat": zod.number(),
+  "lng": zod.number()
+})),
+  "cells": zod.array(zod.object({
+  "day": zod.number().int().min(getPatternAnalysisResponseCellsItemDayMin).max(getPatternAnalysisResponseCellsItemDayMax),
+  "hour": zod.number().int().min(getPatternAnalysisResponseCellsItemHourMin).max(getPatternAnalysisResponseCellsItemHourMax),
+  "count": zod.number().int().min(getPatternAnalysisResponseCellsItemCountMin)
+})),
+  "links": zod.array(zod.object({
+  "source": zod.string(),
+  "target": zod.string(),
+  "similarity": zod.number().min(getPatternAnalysisResponseLinksItemSimilarityMin).max(getPatternAnalysisResponseLinksItemSimilarityMax),
+  "reasons": zod.array(zod.string())
+})),
+  "groups": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "incidentIds": zod.array(zod.string()),
+  "minimumSimilarity": zod.number()
+})),
+  "notices": zod.array(zod.object({
+  "zone": zod.string(),
+  "day": zod.number().int(),
+  "hour": zod.number().int(),
+  "count": zod.number().int(),
+  "groupTotal": zod.number().int(),
+  "distinctDates": zod.number().int(),
+  "text": zod.string()
+}))
+})
+
+
+export const GetOnboardingPolicyResponse = zod.object({
+  "version": zod.string(),
+  "terms": zod.string(),
+  "privacy": zod.string(),
+  "legal": zod.string(),
+  "biometricNotice": zod.string(),
+  "evidenceMode": zod.enum(['local_reference', 'private_file']),
+  "storageAvailable": zod.boolean()
+})
+
+
+export const GetOnboardingProfileResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string(),
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
+}),
+  "completed": zod.boolean(),
+  "requestedRole": zod.enum(['ciudadano', 'patrulla', 'analista', 'director']),
+  "registrationId": zod.string(),
+  "corporation": zod.string(),
+  "consentVersion": zod.string(),
+  "consentedAt": zod.string().nullable(),
+  "reviewStatus": zod.enum(['incomplete', 'pending', 'approved', 'rejected']),
+  "reviewNote": zod.string(),
+  "biometricMode": zod.enum(['simulated'])
+})
+
+
+export const completeOnboardingBodyRegistrationIdMax = 80;
+
+export const completeOnboardingBodyCorporationMax = 120;
+
+export const completeOnboardingBodyConsentVersionMax = 80;
+
+
+
+export const CompleteOnboardingBody = zod.object({
+  "requestedRole": zod.enum(['ciudadano', 'patrulla', 'analista', 'director']),
+  "registrationId": zod.string().max(completeOnboardingBodyRegistrationIdMax).optional(),
+  "corporation": zod.string().max(completeOnboardingBodyCorporationMax).optional(),
+  "consentAccepted": zod.literal(true),
+  "consentVersion": zod.string().max(completeOnboardingBodyConsentVersionMax),
+  "biometricMode": zod.enum(['simulated'])
+})
+
+export const CompleteOnboardingResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string(),
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
+}),
+  "completed": zod.boolean(),
+  "requestedRole": zod.enum(['ciudadano', 'patrulla', 'analista', 'director']),
+  "registrationId": zod.string(),
+  "corporation": zod.string(),
+  "consentVersion": zod.string(),
+  "consentedAt": zod.string().nullable(),
+  "reviewStatus": zod.enum(['incomplete', 'pending', 'approved', 'rejected']),
+  "reviewNote": zod.string(),
+  "biometricMode": zod.enum(['simulated'])
+})
+
+
+export const ListEnrollmentRequestsResponseItem = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string(),
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
+}),
+  "completed": zod.boolean(),
+  "requestedRole": zod.enum(['ciudadano', 'patrulla', 'analista', 'director']),
+  "registrationId": zod.string(),
+  "corporation": zod.string(),
+  "consentVersion": zod.string(),
+  "consentedAt": zod.string().nullable(),
+  "reviewStatus": zod.enum(['incomplete', 'pending', 'approved', 'rejected']),
+  "reviewNote": zod.string(),
+  "biometricMode": zod.enum(['simulated'])
+})
+export const ListEnrollmentRequestsResponse = zod.array(ListEnrollmentRequestsResponseItem)
+
+
+
+
+
+export const ReviewEnrollmentParams = zod.object({
+  "userId": zod.coerce.number().int().min(1)
+})
+
+export const reviewEnrollmentBodyNoteMin = 5;
+export const reviewEnrollmentBodyNoteMax = 600;
+
+
+
+export const ReviewEnrollmentBody = zod.object({
+  "approve": zod.boolean(),
+  "note": zod.string().min(reviewEnrollmentBodyNoteMin).max(reviewEnrollmentBodyNoteMax)
+})
+
+export const ReviewEnrollmentResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string(),
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
+}),
+  "completed": zod.boolean(),
+  "requestedRole": zod.enum(['ciudadano', 'patrulla', 'analista', 'director']),
+  "registrationId": zod.string(),
+  "corporation": zod.string(),
+  "consentVersion": zod.string(),
+  "consentedAt": zod.string().nullable(),
+  "reviewStatus": zod.enum(['incomplete', 'pending', 'approved', 'rejected']),
+  "reviewNote": zod.string(),
+  "biometricMode": zod.enum(['simulated'])
+})
+
+
+export const listCitizenCasesResponseReportPointLatMin = -90;
+export const listCitizenCasesResponseReportPointLatMax = 90;
+
+export const listCitizenCasesResponseReportPointLngMin = -180;
+export const listCitizenCasesResponseReportPointLngMax = 180;
+
+export const listCitizenCasesResponseUnitOnePositionLatMin = -90;
+export const listCitizenCasesResponseUnitOnePositionLatMax = 90;
+
+export const listCitizenCasesResponseUnitOnePositionLngMin = -180;
+export const listCitizenCasesResponseUnitOnePositionLngMax = 180;
+
+export const listCitizenCasesResponseEvidenceItemOneFilenameMax = 180;
+
+export const listCitizenCasesResponseEvidenceItemOneSizeMax = 20000000;
+
+export const listCitizenCasesResponseEvidenceItemOneSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const ListCitizenCasesResponseItem = zod.object({
+  "id": zod.string(),
+  "folio": zod.string(),
+  "categoryCode": zod.string(),
+  "categoryLabel": zod.string(),
+  "description": zod.string(),
+  "zone": zod.string(),
+  "ownerUsername": zod.string(),
+  "createdAt": zod.string(),
+  "status": zod.enum(['registered', 'active', 'arrived', 'completed']),
+  "reportPoint": zod.object({
+  "lat": zod.number().min(listCitizenCasesResponseReportPointLatMin).max(listCitizenCasesResponseReportPointLatMax),
+  "lng": zod.number().min(listCitizenCasesResponseReportPointLngMin).max(listCitizenCasesResponseReportPointLngMax)
+}),
+  "simulation": zod.boolean(),
+  "originalHash": zod.string(),
+  "chainValid": zod.boolean(),
+  "unit": zod.union([zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "officerName": zod.string(),
+  "position": zod.object({
+  "lat": zod.number().min(listCitizenCasesResponseUnitOnePositionLatMin).max(listCitizenCasesResponseUnitOnePositionLatMax),
+  "lng": zod.number().min(listCitizenCasesResponseUnitOnePositionLngMin).max(listCitizenCasesResponseUnitOnePositionLngMax)
+}),
+  "distanceMeters": zod.number(),
+  "dispatchId": zod.string()
+}),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "filename": zod.string().min(1).max(listCitizenCasesResponseEvidenceItemOneFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(listCitizenCasesResponseEvidenceItemOneSizeMax),
+  "sha256": zod.string().regex(listCitizenCasesResponseEvidenceItemOneSha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "createdAt": zod.string(),
+  "mode": zod.enum(['local_reference', 'private_file']),
+  "verification": zod.enum(['declared_only', 'server_sha256'])
+}))),
+  "timeline": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string().nullable(),
+  "summary": zod.string()
+}))
+})
+export const ListCitizenCasesResponse = zod.array(ListCitizenCasesResponseItem)
+
+
+export const createCitizenCaseBodyCategoryCodeMax = 40;
+
+export const createCitizenCaseBodyDescriptionMin = 15;
+export const createCitizenCaseBodyDescriptionMax = 3000;
+
+
+
+export const CreateCitizenCaseBody = zod.object({
+  "categoryCode": zod.string().min(1).max(createCitizenCaseBodyCategoryCodeMax),
+  "description": zod.string().min(createCitizenCaseBodyDescriptionMin).max(createCitizenCaseBodyDescriptionMax),
+  "zone": zod.enum(['centro', 'norte', 'sur'])
+})
+
+export const createCitizenCaseResponseReportPointLatMin = -90;
+export const createCitizenCaseResponseReportPointLatMax = 90;
+
+export const createCitizenCaseResponseReportPointLngMin = -180;
+export const createCitizenCaseResponseReportPointLngMax = 180;
+
+export const createCitizenCaseResponseUnitOnePositionLatMin = -90;
+export const createCitizenCaseResponseUnitOnePositionLatMax = 90;
+
+export const createCitizenCaseResponseUnitOnePositionLngMin = -180;
+export const createCitizenCaseResponseUnitOnePositionLngMax = 180;
+
+export const createCitizenCaseResponseEvidenceItemOneFilenameMax = 180;
+
+export const createCitizenCaseResponseEvidenceItemOneSizeMax = 20000000;
+
+export const createCitizenCaseResponseEvidenceItemOneSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const CreateCitizenCaseResponse = zod.object({
+  "id": zod.string(),
+  "folio": zod.string(),
+  "categoryCode": zod.string(),
+  "categoryLabel": zod.string(),
+  "description": zod.string(),
+  "zone": zod.string(),
+  "ownerUsername": zod.string(),
+  "createdAt": zod.string(),
+  "status": zod.enum(['registered', 'active', 'arrived', 'completed']),
+  "reportPoint": zod.object({
+  "lat": zod.number().min(createCitizenCaseResponseReportPointLatMin).max(createCitizenCaseResponseReportPointLatMax),
+  "lng": zod.number().min(createCitizenCaseResponseReportPointLngMin).max(createCitizenCaseResponseReportPointLngMax)
+}),
+  "simulation": zod.boolean(),
+  "originalHash": zod.string(),
+  "chainValid": zod.boolean(),
+  "unit": zod.union([zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "officerName": zod.string(),
+  "position": zod.object({
+  "lat": zod.number().min(createCitizenCaseResponseUnitOnePositionLatMin).max(createCitizenCaseResponseUnitOnePositionLatMax),
+  "lng": zod.number().min(createCitizenCaseResponseUnitOnePositionLngMin).max(createCitizenCaseResponseUnitOnePositionLngMax)
+}),
+  "distanceMeters": zod.number(),
+  "dispatchId": zod.string()
+}),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "filename": zod.string().min(1).max(createCitizenCaseResponseEvidenceItemOneFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(createCitizenCaseResponseEvidenceItemOneSizeMax),
+  "sha256": zod.string().regex(createCitizenCaseResponseEvidenceItemOneSha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "createdAt": zod.string(),
+  "mode": zod.enum(['local_reference', 'private_file']),
+  "verification": zod.enum(['declared_only', 'server_sha256'])
+}))),
+  "timeline": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string().nullable(),
+  "summary": zod.string()
+}))
+})
+
+
+export const GetCitizenCaseParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const getCitizenCaseResponseReportPointLatMin = -90;
+export const getCitizenCaseResponseReportPointLatMax = 90;
+
+export const getCitizenCaseResponseReportPointLngMin = -180;
+export const getCitizenCaseResponseReportPointLngMax = 180;
+
+export const getCitizenCaseResponseUnitOnePositionLatMin = -90;
+export const getCitizenCaseResponseUnitOnePositionLatMax = 90;
+
+export const getCitizenCaseResponseUnitOnePositionLngMin = -180;
+export const getCitizenCaseResponseUnitOnePositionLngMax = 180;
+
+export const getCitizenCaseResponseEvidenceItemOneFilenameMax = 180;
+
+export const getCitizenCaseResponseEvidenceItemOneSizeMax = 20000000;
+
+export const getCitizenCaseResponseEvidenceItemOneSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const GetCitizenCaseResponse = zod.object({
+  "id": zod.string(),
+  "folio": zod.string(),
+  "categoryCode": zod.string(),
+  "categoryLabel": zod.string(),
+  "description": zod.string(),
+  "zone": zod.string(),
+  "ownerUsername": zod.string(),
+  "createdAt": zod.string(),
+  "status": zod.enum(['registered', 'active', 'arrived', 'completed']),
+  "reportPoint": zod.object({
+  "lat": zod.number().min(getCitizenCaseResponseReportPointLatMin).max(getCitizenCaseResponseReportPointLatMax),
+  "lng": zod.number().min(getCitizenCaseResponseReportPointLngMin).max(getCitizenCaseResponseReportPointLngMax)
+}),
+  "simulation": zod.boolean(),
+  "originalHash": zod.string(),
+  "chainValid": zod.boolean(),
+  "unit": zod.union([zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "officerName": zod.string(),
+  "position": zod.object({
+  "lat": zod.number().min(getCitizenCaseResponseUnitOnePositionLatMin).max(getCitizenCaseResponseUnitOnePositionLatMax),
+  "lng": zod.number().min(getCitizenCaseResponseUnitOnePositionLngMin).max(getCitizenCaseResponseUnitOnePositionLngMax)
+}),
+  "distanceMeters": zod.number(),
+  "dispatchId": zod.string()
+}),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "filename": zod.string().min(1).max(getCitizenCaseResponseEvidenceItemOneFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(getCitizenCaseResponseEvidenceItemOneSizeMax),
+  "sha256": zod.string().regex(getCitizenCaseResponseEvidenceItemOneSha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "createdAt": zod.string(),
+  "mode": zod.enum(['local_reference', 'private_file']),
+  "verification": zod.enum(['declared_only', 'server_sha256'])
+}))),
+  "timeline": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string().nullable(),
+  "summary": zod.string()
+}))
+})
+
+
+export const StartCitizenDispatchParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+
+
+export const StartCitizenDispatchBody = zod.object({
+  "patrolUserId": zod.number().int().min(1).optional()
+})
+
+export const startCitizenDispatchResponseReportPointLatMin = -90;
+export const startCitizenDispatchResponseReportPointLatMax = 90;
+
+export const startCitizenDispatchResponseReportPointLngMin = -180;
+export const startCitizenDispatchResponseReportPointLngMax = 180;
+
+export const startCitizenDispatchResponseUnitOnePositionLatMin = -90;
+export const startCitizenDispatchResponseUnitOnePositionLatMax = 90;
+
+export const startCitizenDispatchResponseUnitOnePositionLngMin = -180;
+export const startCitizenDispatchResponseUnitOnePositionLngMax = 180;
+
+export const startCitizenDispatchResponseEvidenceItemOneFilenameMax = 180;
+
+export const startCitizenDispatchResponseEvidenceItemOneSizeMax = 20000000;
+
+export const startCitizenDispatchResponseEvidenceItemOneSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const StartCitizenDispatchResponse = zod.object({
+  "id": zod.string(),
+  "folio": zod.string(),
+  "categoryCode": zod.string(),
+  "categoryLabel": zod.string(),
+  "description": zod.string(),
+  "zone": zod.string(),
+  "ownerUsername": zod.string(),
+  "createdAt": zod.string(),
+  "status": zod.enum(['registered', 'active', 'arrived', 'completed']),
+  "reportPoint": zod.object({
+  "lat": zod.number().min(startCitizenDispatchResponseReportPointLatMin).max(startCitizenDispatchResponseReportPointLatMax),
+  "lng": zod.number().min(startCitizenDispatchResponseReportPointLngMin).max(startCitizenDispatchResponseReportPointLngMax)
+}),
+  "simulation": zod.boolean(),
+  "originalHash": zod.string(),
+  "chainValid": zod.boolean(),
+  "unit": zod.union([zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "officerName": zod.string(),
+  "position": zod.object({
+  "lat": zod.number().min(startCitizenDispatchResponseUnitOnePositionLatMin).max(startCitizenDispatchResponseUnitOnePositionLatMax),
+  "lng": zod.number().min(startCitizenDispatchResponseUnitOnePositionLngMin).max(startCitizenDispatchResponseUnitOnePositionLngMax)
+}),
+  "distanceMeters": zod.number(),
+  "dispatchId": zod.string()
+}),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "filename": zod.string().min(1).max(startCitizenDispatchResponseEvidenceItemOneFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(startCitizenDispatchResponseEvidenceItemOneSizeMax),
+  "sha256": zod.string().regex(startCitizenDispatchResponseEvidenceItemOneSha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "createdAt": zod.string(),
+  "mode": zod.enum(['local_reference', 'private_file']),
+  "verification": zod.enum(['declared_only', 'server_sha256'])
+}))),
+  "timeline": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string().nullable(),
+  "summary": zod.string()
+}))
+})
+
+
+export const CloseCitizenCaseParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const closeCitizenCaseResponseReportPointLatMin = -90;
+export const closeCitizenCaseResponseReportPointLatMax = 90;
+
+export const closeCitizenCaseResponseReportPointLngMin = -180;
+export const closeCitizenCaseResponseReportPointLngMax = 180;
+
+export const closeCitizenCaseResponseUnitOnePositionLatMin = -90;
+export const closeCitizenCaseResponseUnitOnePositionLatMax = 90;
+
+export const closeCitizenCaseResponseUnitOnePositionLngMin = -180;
+export const closeCitizenCaseResponseUnitOnePositionLngMax = 180;
+
+export const closeCitizenCaseResponseEvidenceItemOneFilenameMax = 180;
+
+export const closeCitizenCaseResponseEvidenceItemOneSizeMax = 20000000;
+
+export const closeCitizenCaseResponseEvidenceItemOneSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const CloseCitizenCaseResponse = zod.object({
+  "id": zod.string(),
+  "folio": zod.string(),
+  "categoryCode": zod.string(),
+  "categoryLabel": zod.string(),
+  "description": zod.string(),
+  "zone": zod.string(),
+  "ownerUsername": zod.string(),
+  "createdAt": zod.string(),
+  "status": zod.enum(['registered', 'active', 'arrived', 'completed']),
+  "reportPoint": zod.object({
+  "lat": zod.number().min(closeCitizenCaseResponseReportPointLatMin).max(closeCitizenCaseResponseReportPointLatMax),
+  "lng": zod.number().min(closeCitizenCaseResponseReportPointLngMin).max(closeCitizenCaseResponseReportPointLngMax)
+}),
+  "simulation": zod.boolean(),
+  "originalHash": zod.string(),
+  "chainValid": zod.boolean(),
+  "unit": zod.union([zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "officerName": zod.string(),
+  "position": zod.object({
+  "lat": zod.number().min(closeCitizenCaseResponseUnitOnePositionLatMin).max(closeCitizenCaseResponseUnitOnePositionLatMax),
+  "lng": zod.number().min(closeCitizenCaseResponseUnitOnePositionLngMin).max(closeCitizenCaseResponseUnitOnePositionLngMax)
+}),
+  "distanceMeters": zod.number(),
+  "dispatchId": zod.string()
+}),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "filename": zod.string().min(1).max(closeCitizenCaseResponseEvidenceItemOneFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(closeCitizenCaseResponseEvidenceItemOneSizeMax),
+  "sha256": zod.string().regex(closeCitizenCaseResponseEvidenceItemOneSha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "createdAt": zod.string(),
+  "mode": zod.enum(['local_reference', 'private_file']),
+  "verification": zod.enum(['declared_only', 'server_sha256'])
+}))),
+  "timeline": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string().nullable(),
+  "summary": zod.string()
+}))
+})
+
+
+export const AppendCitizenEvidenceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const appendCitizenEvidenceBodyFilenameMax = 180;
+
+export const appendCitizenEvidenceBodySizeMax = 20000000;
+
+export const appendCitizenEvidenceBodySha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const AppendCitizenEvidenceBody = zod.object({
+  "filename": zod.string().min(1).max(appendCitizenEvidenceBodyFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(appendCitizenEvidenceBodySizeMax),
+  "sha256": zod.string().regex(appendCitizenEvidenceBodySha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+})
+
+export const appendCitizenEvidenceResponseReportPointLatMin = -90;
+export const appendCitizenEvidenceResponseReportPointLatMax = 90;
+
+export const appendCitizenEvidenceResponseReportPointLngMin = -180;
+export const appendCitizenEvidenceResponseReportPointLngMax = 180;
+
+export const appendCitizenEvidenceResponseUnitOnePositionLatMin = -90;
+export const appendCitizenEvidenceResponseUnitOnePositionLatMax = 90;
+
+export const appendCitizenEvidenceResponseUnitOnePositionLngMin = -180;
+export const appendCitizenEvidenceResponseUnitOnePositionLngMax = 180;
+
+export const appendCitizenEvidenceResponseEvidenceItemOneFilenameMax = 180;
+
+export const appendCitizenEvidenceResponseEvidenceItemOneSizeMax = 20000000;
+
+export const appendCitizenEvidenceResponseEvidenceItemOneSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const AppendCitizenEvidenceResponse = zod.object({
+  "id": zod.string(),
+  "folio": zod.string(),
+  "categoryCode": zod.string(),
+  "categoryLabel": zod.string(),
+  "description": zod.string(),
+  "zone": zod.string(),
+  "ownerUsername": zod.string(),
+  "createdAt": zod.string(),
+  "status": zod.enum(['registered', 'active', 'arrived', 'completed']),
+  "reportPoint": zod.object({
+  "lat": zod.number().min(appendCitizenEvidenceResponseReportPointLatMin).max(appendCitizenEvidenceResponseReportPointLatMax),
+  "lng": zod.number().min(appendCitizenEvidenceResponseReportPointLngMin).max(appendCitizenEvidenceResponseReportPointLngMax)
+}),
+  "simulation": zod.boolean(),
+  "originalHash": zod.string(),
+  "chainValid": zod.boolean(),
+  "unit": zod.union([zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "officerName": zod.string(),
+  "position": zod.object({
+  "lat": zod.number().min(appendCitizenEvidenceResponseUnitOnePositionLatMin).max(appendCitizenEvidenceResponseUnitOnePositionLatMax),
+  "lng": zod.number().min(appendCitizenEvidenceResponseUnitOnePositionLngMin).max(appendCitizenEvidenceResponseUnitOnePositionLngMax)
+}),
+  "distanceMeters": zod.number(),
+  "dispatchId": zod.string()
+}),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "filename": zod.string().min(1).max(appendCitizenEvidenceResponseEvidenceItemOneFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(appendCitizenEvidenceResponseEvidenceItemOneSizeMax),
+  "sha256": zod.string().regex(appendCitizenEvidenceResponseEvidenceItemOneSha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "createdAt": zod.string(),
+  "mode": zod.enum(['local_reference', 'private_file']),
+  "verification": zod.enum(['declared_only', 'server_sha256'])
+}))),
+  "timeline": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string().nullable(),
+  "summary": zod.string()
+}))
+})
+
+
+export const RequestCitizenUploadParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const requestCitizenUploadBodyFilenameMax = 180;
+
+export const requestCitizenUploadBodySizeMax = 20000000;
+
+export const requestCitizenUploadBodySha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const RequestCitizenUploadBody = zod.object({
+  "filename": zod.string().min(1).max(requestCitizenUploadBodyFilenameMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']),
+  "size": zod.number().int().min(1).max(requestCitizenUploadBodySizeMax),
+  "sha256": zod.string().regex(requestCitizenUploadBodySha256RegExp),
+  "uploadId": zod.string().uuid().optional()
+})
+
+export const RequestCitizenUploadResponse = zod.object({
+  "uploadId": zod.string(),
+  "uploadURL": zod.string(),
+  "expiresAt": zod.string()
+})
+
+
+export const DownloadCitizenEvidenceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DownloadCitizenEvidenceResponse = zod.unknown()
+
+
+export const getPatrolAssignmentsResponseAlertsItemReportPointLatMin = -90;
+export const getPatrolAssignmentsResponseAlertsItemReportPointLatMax = 90;
+
+export const getPatrolAssignmentsResponseAlertsItemReportPointLngMin = -180;
+export const getPatrolAssignmentsResponseAlertsItemReportPointLngMax = 180;
+
+export const getPatrolAssignmentsResponseAlertsItemUnitPositionLatMin = -90;
+export const getPatrolAssignmentsResponseAlertsItemUnitPositionLatMax = 90;
+
+export const getPatrolAssignmentsResponseAlertsItemUnitPositionLngMin = -180;
+export const getPatrolAssignmentsResponseAlertsItemUnitPositionLngMax = 180;
+
+
+
+export const GetPatrolAssignmentsResponse = zod.object({
+  "unitLabel": zod.string(),
+  "simulation": zod.boolean(),
+  "alerts": zod.array(zod.object({
+  "id": zod.string(),
+  "folio": zod.string(),
+  "categoryLabel": zod.string(),
+  "status": zod.string(),
+  "reportPoint": zod.object({
+  "lat": zod.number().min(getPatrolAssignmentsResponseAlertsItemReportPointLatMin).max(getPatrolAssignmentsResponseAlertsItemReportPointLatMax),
+  "lng": zod.number().min(getPatrolAssignmentsResponseAlertsItemReportPointLngMin).max(getPatrolAssignmentsResponseAlertsItemReportPointLngMax)
+}),
+  "unit": zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "officerName": zod.string(),
+  "position": zod.object({
+  "lat": zod.number().min(getPatrolAssignmentsResponseAlertsItemUnitPositionLatMin).max(getPatrolAssignmentsResponseAlertsItemUnitPositionLatMax),
+  "lng": zod.number().min(getPatrolAssignmentsResponseAlertsItemUnitPositionLngMin).max(getPatrolAssignmentsResponseAlertsItemUnitPositionLngMax)
+}),
+  "distanceMeters": zod.number(),
+  "dispatchId": zod.string()
+})
+}))
+})
+
+
+export const ListPatrolRosterResponseItem = zod.object({
+  "userId": zod.number().int(),
+  "unitLabel": zod.string()
+})
+export const ListPatrolRosterResponse = zod.array(ListPatrolRosterResponseItem)
+
+
+export const GetProcessLivenessResponse = zod.object({
+  "status": zod.string(),
+  "worker": zod.number().int()
+})
+
+
+export const GetServiceReadinessResponse = zod.object({
+  "status": zod.enum(['ready', 'degraded', 'unavailable']),
+  "worker": zod.number().int(),
+  "database": zod.boolean(),
+  "redis": zod.boolean(),
+  "heatmap": zod.boolean(),
+  "quantum": zod.boolean()
+})
+
+
+export const ListMutationAttemptsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "requestId": zod.string(),
+  "stream": zod.string(),
+  "operation": zod.string(),
+  "actorId": zod.number().int(),
+  "actor": zod.string(),
+  "outcome": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListMutationAttemptsResponse = zod.array(ListMutationAttemptsResponseItem)
+
+
+export const GetCrimeCatalogResponse = zod.object({
+  "version": zod.string(),
+  "warning": zod.string(),
+  "sources": zod.array(zod.object({
+  "system": zod.string(),
+  "version": zod.string(),
+  "url": zod.string(),
+  "sha256": zod.string(),
+  "scope": zod.string()
+})),
+  "entries": zod.array(zod.object({
+  "code": zod.string(),
+  "label": zod.string(),
+  "system": zod.enum(['RNID', 'ICCS']),
+  "level": zod.number().int()
+}))
+})
+
+
+export const ListSealedRecordsResponseItem = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.string(),
+  "folio": zod.string(),
+  "createdAt": zod.string(),
+  "originalHash": zod.string(),
+  "status": zod.enum(['registered', 'amended', 'cancellation_recorded']),
+  "entryCount": zod.number().int(),
+  "canWrite": zod.boolean()
+})
+export const ListSealedRecordsResponse = zod.array(ListSealedRecordsResponseItem)
+
+
+export const getRecordLedgerPathIdMax = 64;
+
+
+
+export const GetRecordLedgerParams = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.coerce.string().max(getRecordLedgerPathIdMax)
+})
+
+export const GetRecordLedgerResponse = zod.object({
+  "record": zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.string(),
+  "folio": zod.string(),
+  "createdAt": zod.string(),
+  "originalHash": zod.string(),
+  "status": zod.enum(['registered', 'amended', 'cancellation_recorded']),
+  "entryCount": zod.number().int(),
+  "canWrite": zod.boolean()
+}),
+  "original": zod.string(),
+  "originalCanonical": zod.string(),
+  "entries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "sequence": zod.number().int(),
+  "eventType": zod.enum(['recorded', 'route', 'report', 'amendment', 'evidence']),
+  "data": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string(),
+  "payloadHash": zod.string(),
+  "canonical": zod.string()
+})),
+  "integrity": zod.boolean(),
+  "integrityDetail": zod.string()
+})
+
+
+export const rejectRecordPatchPathIdMax = 64;
+
+
+
+export const RejectRecordPatchParams = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.coerce.string().max(rejectRecordPatchPathIdMax)
+})
+
+export const RejectRecordPatchResponse = zod.void()
+
+
+export const rejectRecordReplacementPathIdMax = 64;
+
+
+
+export const RejectRecordReplacementParams = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.coerce.string().max(rejectRecordReplacementPathIdMax)
+})
+
+export const RejectRecordReplacementResponse = zod.void()
+
+
+export const rejectRecordDeletionPathIdMax = 64;
+
+
+
+export const RejectRecordDeletionParams = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.coerce.string().max(rejectRecordDeletionPathIdMax)
+})
+
+export const RejectRecordDeletionResponse = zod.void()
+
+
+export const createAmendmentValidationPathIdMax = 64;
+
+
+
+export const CreateAmendmentValidationParams = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.coerce.string().max(createAmendmentValidationPathIdMax)
+})
+
+export const createAmendmentValidationBodyJustificationMin = 15;
+export const createAmendmentValidationBodyJustificationMax = 2000;
+
+
+
+export const CreateAmendmentValidationBody = zod.object({
+  "action": zod.enum(['clarification', 'cancellation']),
+  "justification": zod.string().min(createAmendmentValidationBodyJustificationMin).max(createAmendmentValidationBodyJustificationMax)
+})
+
+export const CreateAmendmentValidationResponse = zod.object({
+  "validationToken": zod.string(),
+  "expiresAt": zod.string(),
+  "originalHash": zod.string(),
+  "simulated": zod.boolean()
+})
+
+
+export const appendRecordAmendmentPathIdMax = 64;
+
+
+
+export const AppendRecordAmendmentParams = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.coerce.string().max(appendRecordAmendmentPathIdMax)
+})
+
+export const appendRecordAmendmentBodyJustificationMin = 15;
+export const appendRecordAmendmentBodyJustificationMax = 2000;
+
+export const appendRecordAmendmentBodyValidationTokenMin = 40;
+export const appendRecordAmendmentBodyValidationTokenMax = 100;
+
+
+
+export const AppendRecordAmendmentBody = zod.object({
+  "action": zod.enum(['clarification', 'cancellation']),
+  "justification": zod.string().min(appendRecordAmendmentBodyJustificationMin).max(appendRecordAmendmentBodyJustificationMax),
+  "validationToken": zod.string().min(appendRecordAmendmentBodyValidationTokenMin).max(appendRecordAmendmentBodyValidationTokenMax)
+})
+
+export const AppendRecordAmendmentResponse = zod.object({
+  "record": zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.string(),
+  "folio": zod.string(),
+  "createdAt": zod.string(),
+  "originalHash": zod.string(),
+  "status": zod.enum(['registered', 'amended', 'cancellation_recorded']),
+  "entryCount": zod.number().int(),
+  "canWrite": zod.boolean()
+}),
+  "original": zod.string(),
+  "originalCanonical": zod.string(),
+  "entries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "sequence": zod.number().int(),
+  "eventType": zod.enum(['recorded', 'route', 'report', 'amendment', 'evidence']),
+  "data": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string(),
+  "payloadHash": zod.string(),
+  "canonical": zod.string()
+})),
+  "integrity": zod.boolean(),
+  "integrityDetail": zod.string()
+})
+
+
+export const appendRecordEvidencePathIdMax = 64;
+
+
+
+export const AppendRecordEvidenceParams = zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.coerce.string().max(appendRecordEvidencePathIdMax)
+})
+
+export const appendRecordEvidenceBodyLabelMin = 3;
+export const appendRecordEvidenceBodyLabelMax = 120;
+
+export const appendRecordEvidenceBodyReferenceMin = 3;
+export const appendRecordEvidenceBodyReferenceMax = 500;
+
+export const appendRecordEvidenceBodyUrlMax = 500;
+
+export const appendRecordEvidenceBodySha256RegExp = new RegExp('^[a-fA-F0-9]{64}$');
+
+
+export const AppendRecordEvidenceBody = zod.object({
+  "device": zod.enum(['cctv', 'android', 'ios', 'tablet', 'laptop', 'other']),
+  "label": zod.string().min(appendRecordEvidenceBodyLabelMin).max(appendRecordEvidenceBodyLabelMax),
+  "reference": zod.string().min(appendRecordEvidenceBodyReferenceMin).max(appendRecordEvidenceBodyReferenceMax),
+  "url": zod.string().max(appendRecordEvidenceBodyUrlMax).optional(),
+  "sha256": zod.string().regex(appendRecordEvidenceBodySha256RegExp).optional()
+})
+
+export const AppendRecordEvidenceResponse = zod.object({
+  "record": zod.object({
+  "kind": zod.enum(['tactical', 'nexus']),
+  "id": zod.string(),
+  "folio": zod.string(),
+  "createdAt": zod.string(),
+  "originalHash": zod.string(),
+  "status": zod.enum(['registered', 'amended', 'cancellation_recorded']),
+  "entryCount": zod.number().int(),
+  "canWrite": zod.boolean()
+}),
+  "original": zod.string(),
+  "originalCanonical": zod.string(),
+  "entries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "sequence": zod.number().int(),
+  "eventType": zod.enum(['recorded', 'route', 'report', 'amendment', 'evidence']),
+  "data": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string(),
+  "hash": zod.string(),
+  "previousHash": zod.string(),
+  "payloadHash": zod.string(),
+  "canonical": zod.string()
+})),
+  "integrity": zod.boolean(),
+  "integrityDetail": zod.string()
+})
+
+
 export const getTacticalScenarioResponseIncidentsItemLatMin = -90;
 export const getTacticalScenarioResponseIncidentsItemLatMax = 90;
 
@@ -27,7 +1058,8 @@ export const GetTacticalScenarioResponse = zod.object({
   "lat": zod.number().min(getTacticalScenarioResponseIncidentsItemLatMin).max(getTacticalScenarioResponseIncidentsItemLatMax),
   "lng": zod.number().min(getTacticalScenarioResponseIncidentsItemLngMin).max(getTacticalScenarioResponseIncidentsItemLngMax),
   "mentions": zod.number().int(),
-  "unit": zod.string()
+  "unit": zod.string(),
+  "catalogCode": zod.string().optional()
 })),
   "heatpoints": zod.array(zod.object({
   "lat": zod.number(),
@@ -78,7 +1110,8 @@ export const ListTacticalAlertsResponseItem = zod.object({
   "lat": zod.number().min(listTacticalAlertsResponseIncidentLatMin).max(listTacticalAlertsResponseIncidentLatMax),
   "lng": zod.number().min(listTacticalAlertsResponseIncidentLngMin).max(listTacticalAlertsResponseIncidentLngMax),
   "mentions": zod.number().int(),
-  "unit": zod.string()
+  "unit": zod.string(),
+  "catalogCode": zod.string().optional()
 }),
   "unit": zod.string(),
   "reportStatus": zod.enum(['pending', 'ready', 'failed']),
@@ -136,7 +1169,8 @@ export const CreateTacticalAlertResponse = zod.object({
   "lat": zod.number().min(createTacticalAlertResponseIncidentLatMin).max(createTacticalAlertResponseIncidentLatMax),
   "lng": zod.number().min(createTacticalAlertResponseIncidentLngMin).max(createTacticalAlertResponseIncidentLngMax),
   "mentions": zod.number().int(),
-  "unit": zod.string()
+  "unit": zod.string(),
+  "catalogCode": zod.string().optional()
 }),
   "unit": zod.string(),
   "reportStatus": zod.enum(['pending', 'ready', 'failed']),
@@ -189,7 +1223,8 @@ export const RetryTacticalReportResponse = zod.object({
   "lat": zod.number().min(retryTacticalReportResponseIncidentLatMin).max(retryTacticalReportResponseIncidentLatMax),
   "lng": zod.number().min(retryTacticalReportResponseIncidentLngMin).max(retryTacticalReportResponseIncidentLngMax),
   "mentions": zod.number().int(),
-  "unit": zod.string()
+  "unit": zod.string(),
+  "catalogCode": zod.string().optional()
 }),
   "unit": zod.string(),
   "reportStatus": zod.enum(['pending', 'ready', 'failed']),
@@ -217,18 +1252,32 @@ export const registerGlobalUserBodyUsernameRegExp = new RegExp('^[a-zA-Z0-9_.-]+
 export const registerGlobalUserBodyPasswordMin = 12;
 export const registerGlobalUserBodyPasswordMax = 128;
 
+export const registerGlobalUserBodyOnboardingRegistrationIdMax = 80;
+
+export const registerGlobalUserBodyOnboardingCorporationMax = 120;
+
+export const registerGlobalUserBodyOnboardingConsentVersionMax = 80;
+
 
 
 export const RegisterGlobalUserBody = zod.object({
   "username": zod.string().min(registerGlobalUserBodyUsernameMin).max(registerGlobalUserBodyUsernameMax).regex(registerGlobalUserBodyUsernameRegExp),
-  "password": zod.string().min(registerGlobalUserBodyPasswordMin).max(registerGlobalUserBodyPasswordMax)
+  "password": zod.string().min(registerGlobalUserBodyPasswordMin).max(registerGlobalUserBodyPasswordMax),
+  "onboarding": zod.object({
+  "requestedRole": zod.enum(['ciudadano', 'patrulla', 'analista', 'director']),
+  "registrationId": zod.string().max(registerGlobalUserBodyOnboardingRegistrationIdMax).optional(),
+  "corporation": zod.string().max(registerGlobalUserBodyOnboardingCorporationMax).optional(),
+  "consentAccepted": zod.literal(true),
+  "consentVersion": zod.string().max(registerGlobalUserBodyOnboardingConsentVersionMax),
+  "biometricMode": zod.enum(['simulated'])
+}).optional()
 })
 
 export const RegisterGlobalUserResponse = zod.object({
   "user": zod.object({
   "id": zod.number().int(),
   "username": zod.string(),
-  "role": zod.enum(['ciudadano', 'oficial', 'director'])
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
 })
 })
 
@@ -241,18 +1290,32 @@ export const loginGlobalUserBodyUsernameRegExp = new RegExp('^[a-zA-Z0-9_.-]+$')
 export const loginGlobalUserBodyPasswordMin = 12;
 export const loginGlobalUserBodyPasswordMax = 128;
 
+export const loginGlobalUserBodyOnboardingRegistrationIdMax = 80;
+
+export const loginGlobalUserBodyOnboardingCorporationMax = 120;
+
+export const loginGlobalUserBodyOnboardingConsentVersionMax = 80;
+
 
 
 export const LoginGlobalUserBody = zod.object({
   "username": zod.string().min(loginGlobalUserBodyUsernameMin).max(loginGlobalUserBodyUsernameMax).regex(loginGlobalUserBodyUsernameRegExp),
-  "password": zod.string().min(loginGlobalUserBodyPasswordMin).max(loginGlobalUserBodyPasswordMax)
+  "password": zod.string().min(loginGlobalUserBodyPasswordMin).max(loginGlobalUserBodyPasswordMax),
+  "onboarding": zod.object({
+  "requestedRole": zod.enum(['ciudadano', 'patrulla', 'analista', 'director']),
+  "registrationId": zod.string().max(loginGlobalUserBodyOnboardingRegistrationIdMax).optional(),
+  "corporation": zod.string().max(loginGlobalUserBodyOnboardingCorporationMax).optional(),
+  "consentAccepted": zod.literal(true),
+  "consentVersion": zod.string().max(loginGlobalUserBodyOnboardingConsentVersionMax),
+  "biometricMode": zod.enum(['simulated'])
+}).optional()
 })
 
 export const LoginGlobalUserResponse = zod.object({
   "user": zod.object({
   "id": zod.number().int(),
   "username": zod.string(),
-  "role": zod.enum(['ciudadano', 'oficial', 'director'])
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
 })
 })
 
@@ -261,7 +1324,7 @@ export const GetGlobalSessionResponse = zod.object({
   "user": zod.object({
   "id": zod.number().int(),
   "username": zod.string(),
-  "role": zod.enum(['ciudadano', 'oficial', 'director'])
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
 })
 })
 
@@ -404,7 +1467,7 @@ export const SubmitGlobalAuditResponse = zod.object({
 export const ListGlobalUsersResponseItem = zod.object({
   "id": zod.number().int(),
   "username": zod.string(),
-  "role": zod.enum(['ciudadano', 'oficial', 'director'])
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
 })
 export const ListGlobalUsersResponse = zod.array(ListGlobalUsersResponseItem)
 
@@ -417,13 +1480,13 @@ export const UpdateGlobalRoleParams = zod.object({
 })
 
 export const UpdateGlobalRoleBody = zod.object({
-  "role": zod.enum(['ciudadano', 'oficial', 'director'])
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
 })
 
 export const UpdateGlobalRoleResponse = zod.object({
   "id": zod.number().int(),
   "username": zod.string(),
-  "role": zod.enum(['ciudadano', 'oficial', 'director'])
+  "role": zod.enum(['ciudadano', 'patrulla', 'analista', 'oficial', 'director'])
 })
 
 

@@ -5,7 +5,7 @@ export const globalUsers = pgTable("global_command_users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role", { enum: ["ciudadano", "oficial", "director"] }).notNull().default("ciudadano"),
+  role: text("role", { enum: ["ciudadano", "patrulla", "analista", "oficial", "director"] }).notNull().default("ciudadano"),
   sessionVersion: integer("session_version").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

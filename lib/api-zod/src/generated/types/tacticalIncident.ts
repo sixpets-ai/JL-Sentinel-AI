@@ -24,4 +24,5 @@ export interface TacticalIncident {
   lng: number;
   mentions: number;
   unit: string;
+  catalogCode?: string;
 }

@@ -42,14 +42,19 @@ export function createSession(res: Response, user: SessionUser): void {
     algorithm: "HS256", subject: String(user.id), issuer: ISSUER, audience: ISSUER,
     expiresIn: SESSION_SECONDS,
   });
+  // Retire the old narrower cookie on login without invalidating existing
+  // sessions. /api scope also protects the legacy Nexus report endpoints.
   res.cookie(COOKIE, token, {
     httpOnly: true, secure: process.env.NODE_ENV === "production",
-    sameSite: "strict", path: "/api/global", maxAge: SESSION_SECONDS * 1000,
+    sameSite: "strict", path: "/api", maxAge: SESSION_SECONDS * 1000,
   });
+  res.clearCookie(COOKIE, { path: "/api/global", httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" });
 }
 
 export function clearSession(res: Response): void {
   res.clearCookie(COOKIE, { path: "/api/global", httpOnly: true,
+    secure: process.env.NODE_ENV === "production", sameSite: "strict" });
+  res.clearCookie(COOKIE, { path: "/api", httpOnly: true,
     secure: process.env.NODE_ENV === "production", sameSite: "strict" });
 }
 
@@ -80,7 +85,8 @@ export async function requireSession(req: Request, res: Response, next: NextFunc
 
 export function requireRole(...roles: Role[]) {
   return (_req: Request, res: Response, next: NextFunction): void => {
-    if (!roles.includes((res.locals.user as SessionUser).role)) {
+    const role = (res.locals.user as SessionUser).role;
+    if (!roles.includes(role) && !(role === "analista" && roles.includes("oficial"))) {
       res.status(403).json({ error: "Tu rol no tiene permiso para esta acción." });
       return;
     }
@@ -90,6 +96,8 @@ export function requireRole(...roles: Role[]) {
 
 // A revoked session also closes sockets; no request-time role comes from the JWT.
 const activeSockets = new Map<number, Set<Socket>>();
+let distributedDisconnect: ((userId: number) => void) | undefined;
+export function setDistributedDisconnect(handler: (userId: number) => void) { distributedDisconnect = handler; }
 export function trackSocket(userId: number, socket: Socket) {
   const sockets = activeSockets.get(userId) ?? new Set<Socket>();
   sockets.add(socket);
@@ -101,6 +109,7 @@ export function trackSocket(userId: number, socket: Socket) {
 }
 export function disconnectUser(userId: number) {
   for (const socket of activeSockets.get(userId) ?? []) socket.disconnect(true);
+  distributedDisconnect?.(userId);
 }
 export async function revokeSession(userId: number) {
   await db.update(globalUsers).set({ sessionVersion: sql`${globalUsers.sessionVersion} + 1` }).where(eq(globalUsers.id, userId));

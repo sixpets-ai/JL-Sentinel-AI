@@ -1,16 +1,13 @@
 import { ai } from "@workspace/integrations-gemini-ai";
 import { GetTacticalScenarioResponse, CreateTacticalAlertResponse } from "@workspace/api-zod";
 import { runPythonJson } from "./python-json";
+import { cachedJson } from "../infrastructure/redis";
 
 export type TacticalAlert = ReturnType<typeof CreateTacticalAlertResponse.parse>;
-let scenario: Promise<ReturnType<typeof GetTacticalScenarioResponse.parse>> | undefined;
-
 export function getTacticalScenario() {
-  if (!scenario) {
-    scenario = runPythonJson("heatmap_generator.py", []).then(value => GetTacticalScenarioResponse.parse(value))
-      .catch(error => { scenario = undefined; throw error; });
-  }
-  return scenario;
+  return cachedJson("scenario:rnid2026-iccs:v2", 60, async () =>
+    GetTacticalScenarioResponse.parse(await runPythonJson("heatmap_generator.py", [])),
+  ).then(value => GetTacticalScenarioResponse.parse(value));
 }
 
 export async function generateExecutiveReport(alert: TacticalAlert): Promise<string> {

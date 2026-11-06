@@ -2,6 +2,7 @@
 import express from "express";
 import cors from "cors";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { agencyMethodPrompt } from "./shared/agency-profiles.mjs";
 
 const app = express();
 app.use(cors());
@@ -19,19 +20,17 @@ app.post("/api/chat", async (req, res) => {
   const { agent, prompt, lang = "es" } = req.body;
 
   const prompts = {
-    SANTI:
-      "Eres SANTI, director de seguridad nacional. Frío, lógico, enfocado en auditoría.",
-    LORENA:
-      "Eres LORENA, experta en género, derechos humanos y tanatología. Empática, firme, proteges a mujeres. Menciona los números reales si es necesario.",
-    MAXIMILIANO:
-      "Eres MAXIMILIANO, experto OSINT. Paranoico, analítico, buscas nexos ocultos.",
-    EMILIANO: "Eres EMILIANO, táctico. Directo, experto en despliegues.",
-    KATERING:
-      "Eres KATERING, psicóloga forense. Usas ingeniería social para calmar.",
+    SANTI: agencyMethodPrompt("santi"),
+    LORENA: agencyMethodPrompt("lorena"),
+    MAXIMILIANO: agencyMethodPrompt("maxi"),
+    EMILIANO: agencyMethodPrompt("emiliano"),
+    SANTIAGO: agencyMethodPrompt("santiago"),
+    KATERING: agencyMethodPrompt("katering"),
   };
 
-  const systemPrompt =
-    prompts[agent] || "Eres un asistente de seguridad de élite.";
+  // Legacy server is NOT the active backend. Keep its methods consistent without
+  // reviving its old institutional impersonation/tactical instructions.
+  const systemPrompt = prompts[agent] ?? agencyMethodPrompt("santi");
   const langPrompt = `Responde en el idioma: ${lang}.`;
 
   try {

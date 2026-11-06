@@ -5,6 +5,208 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type ServiceReadinessStatus = typeof ServiceReadinessStatus[keyof typeof ServiceReadinessStatus];
+
+
+export const ServiceReadinessStatus = {
+  ready: 'ready',
+  degraded: 'degraded',
+  unavailable: 'unavailable',
+} as const;
+
+export interface ServiceReadiness {
+  status: ServiceReadinessStatus;
+  worker: number;
+  database: boolean;
+  redis: boolean;
+  heatmap: boolean;
+  quantum: boolean;
+}
+
+export interface MutationAttempt {
+  id: number;
+  requestId: string;
+  stream: string;
+  operation: string;
+  actorId: number;
+  actor: string;
+  outcome: string;
+  createdAt: string;
+}
+
+export interface MutationRejected {
+  error: string;
+  requestId: string;
+  recorded: boolean;
+}
+
+export type CrimeCatalogEntrySystem = typeof CrimeCatalogEntrySystem[keyof typeof CrimeCatalogEntrySystem];
+
+
+export const CrimeCatalogEntrySystem = {
+  RNID: 'RNID',
+  ICCS: 'ICCS',
+} as const;
+
+export interface CrimeCatalogEntry {
+  code: string;
+  label: string;
+  system: CrimeCatalogEntrySystem;
+  level: number;
+}
+
+export interface CrimeCatalogSource {
+  system: string;
+  version: string;
+  url: string;
+  sha256: string;
+  scope: string;
+}
+
+export interface CrimeCatalog {
+  version: string;
+  warning: string;
+  sources: CrimeCatalogSource[];
+  entries: CrimeCatalogEntry[];
+}
+
+export type SealedRecordKind = typeof SealedRecordKind[keyof typeof SealedRecordKind];
+
+
+export const SealedRecordKind = {
+  tactical: 'tactical',
+  nexus: 'nexus',
+} as const;
+
+export type SealedRecordStatus = typeof SealedRecordStatus[keyof typeof SealedRecordStatus];
+
+
+export const SealedRecordStatus = {
+  registered: 'registered',
+  amended: 'amended',
+  cancellation_recorded: 'cancellation_recorded',
+} as const;
+
+export interface SealedRecord {
+  kind: SealedRecordKind;
+  id: string;
+  folio: string;
+  createdAt: string;
+  originalHash: string;
+  status: SealedRecordStatus;
+  entryCount: number;
+  canWrite: boolean;
+}
+
+export type LedgerEntryEventType = typeof LedgerEntryEventType[keyof typeof LedgerEntryEventType];
+
+
+export const LedgerEntryEventType = {
+  recorded: 'recorded',
+  route: 'route',
+  report: 'report',
+  amendment: 'amendment',
+  evidence: 'evidence',
+} as const;
+
+export interface LedgerEntry {
+  id: number;
+  sequence: number;
+  eventType: LedgerEntryEventType;
+  data: string;
+  actor: string;
+  createdAt: string;
+  hash: string;
+  previousHash: string;
+  payloadHash: string;
+  canonical: string;
+}
+
+export interface RecordLedger {
+  record: SealedRecord;
+  original: string;
+  originalCanonical: string;
+  entries: LedgerEntry[];
+  integrity: boolean;
+  integrityDetail: string;
+}
+
+export type AmendmentIntentAction = typeof AmendmentIntentAction[keyof typeof AmendmentIntentAction];
+
+
+export const AmendmentIntentAction = {
+  clarification: 'clarification',
+  cancellation: 'cancellation',
+} as const;
+
+export interface AmendmentIntent {
+  action: AmendmentIntentAction;
+  /**
+     * @minLength 15
+     * @maxLength 2000
+     */
+  justification: string;
+}
+
+export type AmendmentInputAction = typeof AmendmentInputAction[keyof typeof AmendmentInputAction];
+
+
+export const AmendmentInputAction = {
+  clarification: 'clarification',
+  cancellation: 'cancellation',
+} as const;
+
+export interface AmendmentInput {
+  action: AmendmentInputAction;
+  /**
+     * @minLength 15
+     * @maxLength 2000
+     */
+  justification: string;
+  /**
+     * @minLength 40
+     * @maxLength 100
+     */
+  validationToken: string;
+}
+
+export interface AmendmentValidation {
+  validationToken: string;
+  expiresAt: string;
+  originalHash: string;
+  simulated: boolean;
+}
+
+export type EvidenceReferenceInputDevice = typeof EvidenceReferenceInputDevice[keyof typeof EvidenceReferenceInputDevice];
+
+
+export const EvidenceReferenceInputDevice = {
+  cctv: 'cctv',
+  android: 'android',
+  ios: 'ios',
+  tablet: 'tablet',
+  laptop: 'laptop',
+  other: 'other',
+} as const;
+
+export interface EvidenceReferenceInput {
+  device: EvidenceReferenceInputDevice;
+  /**
+     * @minLength 3
+     * @maxLength 120
+     */
+  label: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reference: string;
+  /** @maxLength 500 */
+  url?: string;
+  /** @pattern ^[a-fA-F0-9]{64}$ */
+  sha256?: string;
+}
+
 export type TacticalIncidentImpact = typeof TacticalIncidentImpact[keyof typeof TacticalIncidentImpact];
 
 
@@ -31,6 +233,7 @@ export interface TacticalIncident {
   lng: number;
   mentions: number;
   unit: string;
+  catalogCode?: string;
 }
 
 export interface TacticalHeatPoint {
@@ -151,9 +354,127 @@ export type GlobalRole = typeof GlobalRole[keyof typeof GlobalRole];
 
 export const GlobalRole = {
   ciudadano: 'ciudadano',
+  patrulla: 'patrulla',
+  analista: 'analista',
   oficial: 'oficial',
   director: 'director',
 } as const;
+
+export interface PatternIncident {
+  id: string;
+  label: string;
+  zone: string;
+  categoryCode: string;
+  method: string;
+  target: string;
+  timestamp: string;
+  lat: number;
+  lng: number;
+}
+
+export interface PatternLink {
+  source: string;
+  target: string;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  similarity: number;
+  reasons: string[];
+}
+
+export interface PatternGroup {
+  id: string;
+  label: string;
+  incidentIds: string[];
+  minimumSimilarity: number;
+}
+
+export interface PatternCell {
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  day: number;
+  /**
+     * @minimum 0
+     * @maximum 23
+     */
+  hour: number;
+  /** @minimum 0 */
+  count: number;
+}
+
+export interface PatternNotice {
+  zone: string;
+  day: number;
+  hour: number;
+  count: number;
+  groupTotal: number;
+  distinctDates: number;
+  text: string;
+}
+
+export type PatternAnalysisSource = typeof PatternAnalysisSource[keyof typeof PatternAnalysisSource];
+
+
+export const PatternAnalysisSource = {
+  demo: 'demo',
+  portal: 'portal',
+} as const;
+
+export interface PatternAnalysis {
+  source: PatternAnalysisSource;
+  timestampBasis: string;
+  generatedAt: string;
+  timezone: string;
+  windowStart: string;
+  windowEnd: string;
+  zone: string;
+  threshold: number;
+  totalAvailable: number;
+  sampled: number;
+  matched: number;
+  excluded: number;
+  truncated: boolean;
+  linksTruncated: boolean;
+  method: string;
+  warnings: string[];
+  incidents: PatternIncident[];
+  cells: PatternCell[];
+  links: PatternLink[];
+  groups: PatternGroup[];
+  notices: PatternNotice[];
+}
+
+export type RequestedRole = typeof RequestedRole[keyof typeof RequestedRole];
+
+
+export const RequestedRole = {
+  ciudadano: 'ciudadano',
+  patrulla: 'patrulla',
+  analista: 'analista',
+  director: 'director',
+} as const;
+
+export type EnrollmentInputBiometricMode = typeof EnrollmentInputBiometricMode[keyof typeof EnrollmentInputBiometricMode];
+
+
+export const EnrollmentInputBiometricMode = {
+  simulated: 'simulated',
+} as const;
+
+export interface EnrollmentInput {
+  requestedRole: RequestedRole;
+  /** @maxLength 80 */
+  registrationId?: string;
+  /** @maxLength 120 */
+  corporation?: string;
+  consentAccepted: true;
+  /** @maxLength 80 */
+  consentVersion: string;
+  biometricMode: EnrollmentInputBiometricMode;
+}
 
 export interface GlobalCredentials {
   /**
@@ -167,6 +488,7 @@ export interface GlobalCredentials {
      * @maxLength 128
      */
   password: string;
+  onboarding?: EnrollmentInput;
 }
 
 export interface GlobalUser {
@@ -181,6 +503,235 @@ export interface GlobalSession {
 
 export interface GlobalRoleInput {
   role: GlobalRole;
+}
+
+export type OnboardingPolicyEvidenceMode = typeof OnboardingPolicyEvidenceMode[keyof typeof OnboardingPolicyEvidenceMode];
+
+
+export const OnboardingPolicyEvidenceMode = {
+  local_reference: 'local_reference',
+  private_file: 'private_file',
+} as const;
+
+export interface OnboardingPolicy {
+  version: string;
+  terms: string;
+  privacy: string;
+  legal: string;
+  biometricNotice: string;
+  evidenceMode: OnboardingPolicyEvidenceMode;
+  storageAvailable: boolean;
+}
+
+export type EnrollmentProfileReviewStatus = typeof EnrollmentProfileReviewStatus[keyof typeof EnrollmentProfileReviewStatus];
+
+
+export const EnrollmentProfileReviewStatus = {
+  incomplete: 'incomplete',
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type EnrollmentProfileBiometricMode = typeof EnrollmentProfileBiometricMode[keyof typeof EnrollmentProfileBiometricMode];
+
+
+export const EnrollmentProfileBiometricMode = {
+  simulated: 'simulated',
+} as const;
+
+export interface EnrollmentProfile {
+  user: GlobalUser;
+  completed: boolean;
+  requestedRole: RequestedRole;
+  registrationId: string;
+  corporation: string;
+  consentVersion: string;
+  /** @nullable */
+  consentedAt: string | null;
+  reviewStatus: EnrollmentProfileReviewStatus;
+  reviewNote: string;
+  biometricMode: EnrollmentProfileBiometricMode;
+}
+
+export interface EnrollmentDecision {
+  approve: boolean;
+  /**
+     * @minLength 5
+     * @maxLength 600
+     */
+  note: string;
+}
+
+export interface CitizenPoint {
+  /**
+     * @minimum -90
+     * @maximum 90
+     */
+  lat: number;
+  /**
+     * @minimum -180
+     * @maximum 180
+     */
+  lng: number;
+}
+
+export type CitizenCaseInputZone = typeof CitizenCaseInputZone[keyof typeof CitizenCaseInputZone];
+
+
+export const CitizenCaseInputZone = {
+  centro: 'centro',
+  norte: 'norte',
+  sur: 'sur',
+} as const;
+
+export interface CitizenCaseInput {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  categoryCode: string;
+  /**
+     * @minLength 15
+     * @maxLength 3000
+     */
+  description: string;
+  zone: CitizenCaseInputZone;
+}
+
+export interface CitizenDispatchInput {
+  /** @minimum 1 */
+  patrolUserId?: number;
+}
+
+export type CitizenEvidenceInputContentType = typeof CitizenEvidenceInputContentType[keyof typeof CitizenEvidenceInputContentType];
+
+
+export const CitizenEvidenceInputContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+  'video/mp4': 'video/mp4',
+  'video/webm': 'video/webm',
+  'audio/mpeg': 'audio/mpeg',
+  'audio/wav': 'audio/wav',
+  'audio/ogg': 'audio/ogg',
+  'audio/webm': 'audio/webm',
+  'audio/mp4': 'audio/mp4',
+} as const;
+
+export interface CitizenEvidenceInput {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  filename: string;
+  contentType: CitizenEvidenceInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 20000000
+     */
+  size: number;
+  /** @pattern ^[a-f0-9]{64}$ */
+  sha256: string;
+  uploadId?: string;
+}
+
+export interface CitizenUploadTicket {
+  uploadId: string;
+  uploadURL: string;
+  expiresAt: string;
+}
+
+export type CitizenEvidenceMode = typeof CitizenEvidenceMode[keyof typeof CitizenEvidenceMode];
+
+
+export const CitizenEvidenceMode = {
+  local_reference: 'local_reference',
+  private_file: 'private_file',
+} as const;
+
+export type CitizenEvidenceVerification = typeof CitizenEvidenceVerification[keyof typeof CitizenEvidenceVerification];
+
+
+export const CitizenEvidenceVerification = {
+  declared_only: 'declared_only',
+  server_sha256: 'server_sha256',
+} as const;
+
+export type CitizenEvidence = CitizenEvidenceInput & {
+  id: string;
+  createdAt: string;
+  mode: CitizenEvidenceMode;
+  verification: CitizenEvidenceVerification;
+};
+
+export interface CitizenEvent {
+  id: number;
+  kind: string;
+  createdAt: string;
+  hash: string;
+  /** @nullable */
+  previousHash: string | null;
+  summary: string;
+}
+
+export interface CitizenUnit {
+  id: string;
+  label: string;
+  officerName: string;
+  position: CitizenPoint;
+  distanceMeters: number;
+  dispatchId: string;
+}
+
+export type CitizenCaseStatus = typeof CitizenCaseStatus[keyof typeof CitizenCaseStatus];
+
+
+export const CitizenCaseStatus = {
+  registered: 'registered',
+  active: 'active',
+  arrived: 'arrived',
+  completed: 'completed',
+} as const;
+
+export interface CitizenCase {
+  id: string;
+  folio: string;
+  categoryCode: string;
+  categoryLabel: string;
+  description: string;
+  zone: string;
+  ownerUsername: string;
+  createdAt: string;
+  status: CitizenCaseStatus;
+  reportPoint: CitizenPoint;
+  simulation: boolean;
+  originalHash: string;
+  chainValid: boolean;
+  unit: CitizenUnit | null;
+  evidence: CitizenEvidence[];
+  timeline: CitizenEvent[];
+}
+
+export interface PatrolMember {
+  userId: number;
+  unitLabel: string;
+}
+
+export interface PatrolAlert {
+  id: string;
+  folio: string;
+  categoryLabel: string;
+  status: string;
+  reportPoint: CitizenPoint;
+  unit: CitizenUnit;
+}
+
+export interface PatrolAssignments {
+  unitLabel: string;
+  simulation: boolean;
+  alerts: PatrolAlert[];
 }
 
 export type GlobalSourceStatus = typeof GlobalSourceStatus[keyof typeof GlobalSourceStatus];
@@ -446,6 +997,49 @@ export interface GeminiImageResult {
 export interface GeminiError {
   error: string;
 }
+
+export type GetPatternAnalysisParams = {
+  source?: GetPatternAnalysisSource;
+  zone?: GetPatternAnalysisZone;
+  windowDays?: GetPatternAnalysisWindowDays;
+  /**
+   * @minimum 0.5
+   * @maximum 1
+   */
+  threshold?: number;
+};
+
+export type GetPatternAnalysisSource = typeof GetPatternAnalysisSource[keyof typeof GetPatternAnalysisSource];
+
+
+export const GetPatternAnalysisSource = {
+  demo: 'demo',
+  portal: 'portal',
+} as const;
+
+export type GetPatternAnalysisZone = typeof GetPatternAnalysisZone[keyof typeof GetPatternAnalysisZone];
+
+
+export const GetPatternAnalysisZone = {
+  all: 'all',
+  centro: 'centro',
+  norte: 'norte',
+  sur: 'sur',
+} as const;
+
+export type GetPatternAnalysisWindowDays = typeof GetPatternAnalysisWindowDays[keyof typeof GetPatternAnalysisWindowDays];
+
+
+export const GetPatternAnalysisWindowDays = {
+  NUMBER_30: 30,
+  NUMBER_90: 90,
+  NUMBER_180: 180,
+} as const;
+
+export type GetProcessLiveness200 = {
+  status: string;
+  worker: number;
+};
 
 export type GetGlobalSnapshotParams = {
   topic: GlobalTopic;

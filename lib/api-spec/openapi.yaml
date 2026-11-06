@@ -15,6 +15,353 @@ tags:
   - name: gemini
     description: Gemini AI chat and image operations
 paths:
+  /global/patterns:
+    get:
+      operationId: getPatternAnalysis
+      parameters:
+        - { name: source, in: query, schema: { type: string, enum: [demo, portal], default: demo } }
+        - { name: zone, in: query, schema: { type: string, enum: [all, centro, norte, sur], default: all } }
+        - { name: windowDays, in: query, schema: { type: integer, enum: [30, 90, 180], default: 90 } }
+        - { name: threshold, in: query, schema: { type: number, minimum: 0.5, maximum: 1, default: 0.8 } }
+      responses:
+        "200":
+          description: Authorized descriptive analysis, not culpability attribution or a crime forecast
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PatternAnalysis" }
+        "403": { description: "Analyst, legacy official or director required" }
+        "503": { description: "Compute unavailable, no fabricated fallback" }
+  /global/onboarding/policy:
+    get:
+      operationId: getOnboardingPolicy
+      responses:
+        "200":
+          description: Informational MVP notices, not a certification or legal opinion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OnboardingPolicy" }
+  /global/onboarding/profile:
+    get:
+      operationId: getOnboardingProfile
+      responses:
+        "200":
+          description: Own enrollment details only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentProfile" }
+    post:
+      operationId: completeOnboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentInput" }
+      responses:
+        "200":
+          description: Consent recorded; role requests never grant permissions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentProfile" }
+  /global/onboarding/requests:
+    get:
+      operationId: listEnrollmentRequests
+      responses:
+        "200":
+          description: Director-only requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EnrollmentProfile" }
+  /global/onboarding/requests/{userId}/decision:
+    post:
+      operationId: reviewEnrollment
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentDecision" }
+      responses:
+        "200":
+          description: Director-reviewed request; target sessions revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentProfile" }
+  /global/citizen/cases:
+    get:
+      operationId: listCitizenCases
+      responses:
+        "200":
+          description: Own cases for citizens; all for authorized analysts and directors
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CitizenCase" }
+    post:
+      operationId: createCitizenCase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CitizenCaseInput" }
+      responses:
+        "201":
+          description: Sealed synthetic exercise, never a real emergency dispatch
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CitizenCase" }
+  /global/citizen/cases/{id}:
+    get:
+      operationId: getCitizenCase
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Owner or analyst access; patrol is denied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CitizenCase" }
+  /global/citizen/cases/{id}/dispatch:
+    post:
+      operationId: startCitizenDispatch
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CitizenDispatchInput" }
+      responses:
+        "200":
+          description: Start an explicitly simulated journey
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CitizenCase" }
+  /global/citizen/cases/{id}/close:
+    post:
+      operationId: closeCitizenCase
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Append completion without altering original
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CitizenCase" }
+  /global/citizen/cases/{id}/evidence:
+    post:
+      operationId: appendCitizenEvidence
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CitizenEvidenceInput" }
+      responses:
+        "201":
+          description: Immutable receipt after server verification of privately stored bytes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CitizenCase" }
+  /global/citizen/cases/{id}/uploads:
+    post:
+      operationId: requestCitizenUpload
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CitizenEvidenceInput" }
+      responses:
+        "201":
+          description: Private temporary PUT URL, not an evidence receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CitizenUploadTicket" }
+        "503":
+          description: Storage unavailable; do not pretend the file was uploaded
+  /global/citizen/evidence/{id}/content:
+    get:
+      operationId: downloadCitizenEvidence
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Authenticated owner or analyst/director download
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+  /global/patrol/assignments:
+    get:
+      operationId: getPatrolAssignments
+      responses:
+        "200":
+          description: Own unit and assigned synthetic nearby alerts; no private case or network data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PatrolAssignments" }
+  /global/citizen/roster:
+    get:
+      operationId: listPatrolRoster
+      responses:
+        "200":
+          description: Analysts and directors only
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PatrolMember" }
+  /health/live:
+    get:
+      operationId: getProcessLiveness
+      responses:
+        "200":
+          description: Process is serving requests
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, worker]
+                properties:
+                  status: { type: string }
+                  worker: { type: integer }
+  /health/ready:
+    get:
+      operationId: getServiceReadiness
+      responses:
+        "200":
+          description: Core dependencies available; compute may be degraded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServiceReadiness" }
+        "503":
+          description: Core database or shared coordination unavailable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServiceReadiness" }
+  /global/mutation-attempts:
+    get:
+      operationId: listMutationAttempts
+      responses:
+        "200":
+          description: Director-only immutable audit of rejected mutation attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MutationAttempt" }
+  /global/catalog:
+    get:
+      operationId: getCrimeCatalog
+      responses:
+        "200":
+          description: Versioned statistical categories, not legal equivalence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrimeCatalog" }
+  /global/ledger:
+    get:
+      operationId: listSealedRecords
+      responses:
+        "200":
+          description: Accessible sealed incident records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SealedRecord" }
+  /global/ledger/{kind}/{id}:
+    parameters:
+      - { in: path, name: kind, required: true, schema: { type: string, enum: [tactical, nexus] } }
+      - { in: path, name: id, required: true, schema: { type: string, maxLength: 64 } }
+    get:
+      operationId: getRecordLedger
+      responses:
+        "200":
+          description: Original, append-only history and independently recomputed integrity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordLedger" }
+    patch:
+      operationId: rejectRecordPatch
+      responses:
+        "409":
+          description: Database rollback followed by independent audit commit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MutationRejected" }
+    put:
+      operationId: rejectRecordReplacement
+      responses:
+        "409":
+          description: Original cannot be replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MutationRejected" }
+    delete:
+      operationId: rejectRecordDeletion
+      responses:
+        "409":
+          description: Original cannot be deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MutationRejected" }
+  /global/ledger/{kind}/{id}/validation:
+    parameters:
+      - { in: path, name: kind, required: true, schema: { type: string, enum: [tactical, nexus] } }
+      - { in: path, name: id, required: true, schema: { type: string, maxLength: 64 } }
+    post:
+      operationId: createAmendmentValidation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AmendmentIntent" }
+      responses:
+        "201":
+          description: Five-minute single-use validation simulation, not biometric authentication
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AmendmentValidation" }
+  /global/ledger/{kind}/{id}/amendments:
+    parameters:
+      - { in: path, name: kind, required: true, schema: { type: string, enum: [tactical, nexus] } }
+      - { in: path, name: id, required: true, schema: { type: string, maxLength: 64 } }
+    post:
+      operationId: appendRecordAmendment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AmendmentInput" }
+      responses:
+        "201":
+          description: Sealed amendment, original unchanged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordLedger" }
+  /global/ledger/{kind}/{id}/evidence:
+    parameters:
+      - { in: path, name: kind, required: true, schema: { type: string, enum: [tactical, nexus] } }
+      - { in: path, name: id, required: true, schema: { type: string, maxLength: 64 } }
+    post:
+      operationId: appendRecordEvidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvidenceReferenceInput" }
+      responses:
+        "201":
+          description: Append-only digital custody reference, files are not fetched or authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordLedger" }
   /global/tactical:
     get:
       operationId: getTacticalScenario
@@ -457,6 +804,135 @@ paths:
 
 components:
   schemas:
+    ServiceReadiness:
+      type: object
+      required: [status, worker, database, redis, heatmap, quantum]
+      properties:
+        status: { type: string, enum: [ready, degraded, unavailable] }
+        worker: { type: integer }
+        database: { type: boolean }
+        redis: { type: boolean }
+        heatmap: { type: boolean }
+        quantum: { type: boolean }
+    MutationAttempt:
+      type: object
+      required: [id, requestId, stream, operation, actorId, actor, outcome, createdAt]
+      properties:
+        id: { type: integer }
+        requestId: { type: string }
+        stream: { type: string }
+        operation: { type: string }
+        actorId: { type: integer }
+        actor: { type: string }
+        outcome: { type: string }
+        createdAt: { type: string }
+    MutationRejected:
+      type: object
+      required: [error, requestId, recorded]
+      properties:
+        error: { type: string }
+        requestId: { type: string }
+        recorded: { type: boolean }
+    CrimeCatalogEntry:
+      type: object
+      required: [code, label, system, level]
+      properties:
+        code: { type: string }
+        label: { type: string }
+        system: { type: string, enum: [RNID, ICCS] }
+        level: { type: integer }
+    CrimeCatalogSource:
+      type: object
+      required: [system, version, url, sha256, scope]
+      properties:
+        system: { type: string }
+        version: { type: string }
+        url: { type: string }
+        sha256: { type: string }
+        scope: { type: string }
+    CrimeCatalog:
+      type: object
+      required: [version, warning, sources, entries]
+      properties:
+        version: { type: string }
+        warning: { type: string }
+        sources:
+          type: array
+          items: { $ref: "#/components/schemas/CrimeCatalogSource" }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/CrimeCatalogEntry" }
+    SealedRecord:
+      type: object
+      required: [kind, id, folio, createdAt, originalHash, status, entryCount, canWrite]
+      properties:
+        kind: { type: string, enum: [tactical, nexus] }
+        id: { type: string }
+        folio: { type: string }
+        createdAt: { type: string }
+        originalHash: { type: string }
+        status: { type: string, enum: [registered, amended, cancellation_recorded] }
+        entryCount: { type: integer }
+        canWrite: { type: boolean }
+    LedgerEntry:
+      type: object
+      required: [id, sequence, eventType, data, actor, createdAt, hash, previousHash, payloadHash, canonical]
+      properties:
+        id: { type: integer }
+        sequence: { type: integer }
+        eventType: { type: string, enum: [recorded, route, report, amendment, evidence] }
+        data: { type: string }
+        actor: { type: string }
+        createdAt: { type: string }
+        hash: { type: string }
+        previousHash: { type: string }
+        payloadHash: { type: string }
+        canonical: { type: string }
+    RecordLedger:
+      type: object
+      required: [record, original, originalCanonical, entries, integrity, integrityDetail]
+      properties:
+        record: { $ref: "#/components/schemas/SealedRecord" }
+        original: { type: string }
+        originalCanonical: { type: string }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerEntry" }
+        integrity: { type: boolean }
+        integrityDetail: { type: string }
+    AmendmentIntent:
+      type: object
+      additionalProperties: false
+      required: [action, justification]
+      properties:
+        action: { type: string, enum: [clarification, cancellation] }
+        justification: { type: string, minLength: 15, maxLength: 2000 }
+    AmendmentInput:
+      type: object
+      additionalProperties: false
+      required: [action, justification, validationToken]
+      properties:
+        action: { type: string, enum: [clarification, cancellation] }
+        justification: { type: string, minLength: 15, maxLength: 2000 }
+        validationToken: { type: string, minLength: 40, maxLength: 100 }
+    AmendmentValidation:
+      type: object
+      required: [validationToken, expiresAt, originalHash, simulated]
+      properties:
+        validationToken: { type: string }
+        expiresAt: { type: string }
+        originalHash: { type: string }
+        simulated: { type: boolean }
+    EvidenceReferenceInput:
+      type: object
+      additionalProperties: false
+      required: [device, label, reference]
+      properties:
+        device: { type: string, enum: [cctv, android, ios, tablet, laptop, other] }
+        label: { type: string, minLength: 3, maxLength: 120 }
+        reference: { type: string, minLength: 3, maxLength: 500 }
+        url: { type: string, maxLength: 500 }
+        sha256: { type: string, pattern: "^[a-fA-F0-9]{64}$" }
     TacticalIncident:
       type: object
       required: [id, title, category, impact, lat, lng, mentions, unit]
@@ -469,6 +945,7 @@ components:
         lng: { type: number, minimum: -180, maximum: 180 }
         mentions: { type: integer }
         unit: { type: string }
+        catalogCode: { type: string }
     TacticalHeatPoint:
       type: object
       required: [lat, lng, weight, count]
@@ -539,7 +1016,95 @@ components:
       enum: [earthquake, flood, wildfire, humanitarian]
     GlobalRole:
       type: string
-      enum: [ciudadano, oficial, director]
+      enum: [ciudadano, patrulla, analista, oficial, director]
+    PatternIncident:
+      type: object
+      required: [id, label, zone, categoryCode, method, target, timestamp, lat, lng]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        zone: { type: string }
+        categoryCode: { type: string }
+        method: { type: string }
+        target: { type: string }
+        timestamp: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+    PatternLink:
+      type: object
+      required: [source, target, similarity, reasons]
+      properties:
+        source: { type: string }
+        target: { type: string }
+        similarity: { type: number, minimum: 0, maximum: 1 }
+        reasons:
+          type: array
+          items: { type: string }
+    PatternGroup:
+      type: object
+      required: [id, label, incidentIds, minimumSimilarity]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        incidentIds:
+          type: array
+          items: { type: string }
+        minimumSimilarity: { type: number }
+    PatternCell:
+      type: object
+      required: [day, hour, count]
+      properties:
+        day: { type: integer, minimum: 0, maximum: 6 }
+        hour: { type: integer, minimum: 0, maximum: 23 }
+        count: { type: integer, minimum: 0 }
+    PatternNotice:
+      type: object
+      required: [zone, day, hour, count, groupTotal, distinctDates, text]
+      properties:
+        zone: { type: string }
+        day: { type: integer }
+        hour: { type: integer }
+        count: { type: integer }
+        groupTotal: { type: integer }
+        distinctDates: { type: integer }
+        text: { type: string }
+    PatternAnalysis:
+      type: object
+      required: [source, timestampBasis, generatedAt, timezone, windowStart, windowEnd, zone, threshold, totalAvailable, sampled, matched, excluded, truncated, linksTruncated, method, warnings, incidents, cells, links, groups, notices]
+      properties:
+        source: { type: string, enum: [demo, portal] }
+        timestampBasis: { type: string }
+        generatedAt: { type: string }
+        timezone: { type: string }
+        windowStart: { type: string }
+        windowEnd: { type: string }
+        zone: { type: string }
+        threshold: { type: number }
+        totalAvailable: { type: integer }
+        sampled: { type: integer }
+        matched: { type: integer }
+        excluded: { type: integer }
+        truncated: { type: boolean }
+        linksTruncated: { type: boolean }
+        method: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+        incidents:
+          type: array
+          items: { $ref: "#/components/schemas/PatternIncident" }
+        cells:
+          type: array
+          items: { $ref: "#/components/schemas/PatternCell" }
+        links:
+          type: array
+          items: { $ref: "#/components/schemas/PatternLink" }
+        groups:
+          type: array
+          items: { $ref: "#/components/schemas/PatternGroup" }
+        notices:
+          type: array
+          items: { $ref: "#/components/schemas/PatternNotice" }
     GlobalCredentials:
       type: object
       required: [username, password]
@@ -547,6 +1112,7 @@ components:
       properties:
         username: { type: string, minLength: 3, maxLength: 40, pattern: "^[a-zA-Z0-9_.-]+$" }
         password: { type: string, minLength: 12, maxLength: 128 }
+        onboarding: { $ref: "#/components/schemas/EnrollmentInput" }
     GlobalUser:
       type: object
       required: [id, username, role]
@@ -565,6 +1131,170 @@ components:
       additionalProperties: false
       properties:
         role: { $ref: "#/components/schemas/GlobalRole" }
+    RequestedRole:
+      type: string
+      enum: [ciudadano, patrulla, analista, director]
+    OnboardingPolicy:
+      type: object
+      required: [version, terms, privacy, legal, biometricNotice, evidenceMode, storageAvailable]
+      properties:
+        version: { type: string }
+        terms: { type: string }
+        privacy: { type: string }
+        legal: { type: string }
+        biometricNotice: { type: string }
+        evidenceMode: { type: string, enum: [local_reference, private_file] }
+        storageAvailable: { type: boolean }
+    EnrollmentInput:
+      type: object
+      additionalProperties: false
+      required: [requestedRole, consentAccepted, consentVersion, biometricMode]
+      properties:
+        requestedRole: { $ref: "#/components/schemas/RequestedRole" }
+        registrationId: { type: string, maxLength: 80 }
+        corporation: { type: string, maxLength: 120 }
+        consentAccepted: { type: boolean, enum: [true] }
+        consentVersion: { type: string, maxLength: 80 }
+        biometricMode: { type: string, enum: [simulated] }
+    EnrollmentProfile:
+      type: object
+      required: [user, completed, requestedRole, registrationId, corporation, consentVersion, consentedAt, reviewStatus, reviewNote, biometricMode]
+      properties:
+        user: { $ref: "#/components/schemas/GlobalUser" }
+        completed: { type: boolean }
+        requestedRole: { $ref: "#/components/schemas/RequestedRole" }
+        registrationId: { type: string }
+        corporation: { type: string }
+        consentVersion: { type: string }
+        consentedAt: { type: ["string", "null"] }
+        reviewStatus: { type: string, enum: [incomplete, pending, approved, rejected] }
+        reviewNote: { type: string }
+        biometricMode: { type: string, enum: [simulated] }
+    EnrollmentDecision:
+      type: object
+      additionalProperties: false
+      required: [approve, note]
+      properties:
+        approve: { type: boolean }
+        note: { type: string, minLength: 5, maxLength: 600 }
+    CitizenPoint:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+    CitizenCaseInput:
+      type: object
+      additionalProperties: false
+      required: [categoryCode, description, zone]
+      properties:
+        categoryCode: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, minLength: 15, maxLength: 3000 }
+        zone: { type: string, enum: [centro, norte, sur] }
+    CitizenDispatchInput:
+      type: object
+      additionalProperties: false
+      properties:
+        patrolUserId: { type: integer, minimum: 1 }
+    CitizenEvidenceInput:
+      type: object
+      additionalProperties: false
+      required: [filename, contentType, size, sha256]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 180 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp, video/mp4, video/webm, audio/mpeg, audio/wav, audio/ogg, audio/webm, audio/mp4] }
+        size: { type: integer, minimum: 1, maximum: 20000000 }
+        sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        uploadId: { type: string, format: uuid }
+    CitizenUploadTicket:
+      type: object
+      required: [uploadId, uploadURL, expiresAt]
+      properties:
+        uploadId: { type: string }
+        uploadURL: { type: string }
+        expiresAt: { type: string }
+    CitizenEvidence:
+      allOf:
+        - { $ref: "#/components/schemas/CitizenEvidenceInput" }
+        - type: object
+          required: [id, createdAt, mode, verification]
+          properties:
+            id: { type: string }
+            createdAt: { type: string }
+            mode: { type: string, enum: [local_reference, private_file] }
+            verification: { type: string, enum: [declared_only, server_sha256] }
+    CitizenEvent:
+      type: object
+      required: [id, kind, createdAt, hash, previousHash, summary]
+      properties:
+        id: { type: integer }
+        kind: { type: string }
+        createdAt: { type: string }
+        hash: { type: string }
+        previousHash: { type: ["string", "null"] }
+        summary: { type: string }
+    CitizenUnit:
+      type: object
+      required: [id, label, officerName, position, distanceMeters, dispatchId]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        officerName: { type: string }
+        position: { $ref: "#/components/schemas/CitizenPoint" }
+        distanceMeters: { type: number }
+        dispatchId: { type: string }
+    CitizenCase:
+      type: object
+      required: [id, folio, categoryCode, categoryLabel, description, zone, ownerUsername, createdAt, status, reportPoint, simulation, originalHash, chainValid, unit, evidence, timeline]
+      properties:
+        id: { type: string }
+        folio: { type: string }
+        categoryCode: { type: string }
+        categoryLabel: { type: string }
+        description: { type: string }
+        zone: { type: string }
+        ownerUsername: { type: string }
+        createdAt: { type: string }
+        status: { type: string, enum: [registered, active, arrived, completed] }
+        reportPoint: { $ref: "#/components/schemas/CitizenPoint" }
+        simulation: { type: boolean }
+        originalHash: { type: string }
+        chainValid: { type: boolean }
+        unit:
+          anyOf:
+            - { $ref: "#/components/schemas/CitizenUnit" }
+            - { type: "null" }
+        evidence:
+          type: array
+          items: { $ref: "#/components/schemas/CitizenEvidence" }
+        timeline:
+          type: array
+          items: { $ref: "#/components/schemas/CitizenEvent" }
+    PatrolMember:
+      type: object
+      required: [userId, unitLabel]
+      properties:
+        userId: { type: integer }
+        unitLabel: { type: string }
+    PatrolAlert:
+      type: object
+      required: [id, folio, categoryLabel, status, reportPoint, unit]
+      properties:
+        id: { type: string }
+        folio: { type: string }
+        categoryLabel: { type: string }
+        status: { type: string }
+        reportPoint: { $ref: "#/components/schemas/CitizenPoint" }
+        unit: { $ref: "#/components/schemas/CitizenUnit" }
+    PatrolAssignments:
+      type: object
+      required: [unitLabel, simulation, alerts]
+      properties:
+        unitLabel: { type: string }
+        simulation: { type: boolean }
+        alerts:
+          type: array
+          items: { $ref: "#/components/schemas/PatrolAlert" }
     GlobalSource:
       type: object
       required: [name, status, detail]

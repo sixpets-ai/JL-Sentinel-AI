@@ -11,6 +11,8 @@ export type GlobalRole = typeof GlobalRole[keyof typeof GlobalRole];
 
 export const GlobalRole = {
   ciudadano: 'ciudadano',
+  patrulla: 'patrulla',
+  analista: 'analista',
   oficial: 'oficial',
   director: 'director',
 } as const;

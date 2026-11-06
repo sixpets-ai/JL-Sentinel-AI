@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, copyFile } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -15,7 +15,7 @@ async function buildAll() {
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/grant-global-role.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/cluster.ts"), path.resolve(artifactDir, "src/grant-global-role.ts"), path.resolve(artifactDir, "src/install-ledger.ts")],
     platform: "node",
     bundle: true,
     format: "esm",
@@ -118,6 +118,11 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+  await copyFile(path.resolve(artifactDir, "../../crime_catalog.json"), path.join(distDir, "crime_catalog.json"));
+  await copyFile(path.resolve(artifactDir, "../../data/pattern-incidents.json"), path.join(distDir, "pattern-incidents.json"));
+  await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/incident-ledger.sql"), path.join(distDir, "incident-ledger.sql"));
+  await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/industrial-hardening.sql"), path.join(distDir, "industrial-hardening.sql"));
+  await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/citizen-onboarding.sql"), path.join(distDir, "citizen-onboarding.sql"));
 }
 
 buildAll().catch((err) => {

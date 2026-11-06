@@ -1,0 +1,28 @@
+/* SANTI transparency ledger — extends tactical glass language (td-*) */
+.lg-seal {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 999px;
+  font: 600 10px "IBM Plex Mono", monospace; letter-spacing: .14em; text-transform: uppercase;
+  color: hsl(var(--td-mint)); border: 1px solid hsl(var(--td-mint) / .55);
+  background: linear-gradient(120deg, hsl(var(--td-mint) / .14), hsl(var(--td-uv) / .08));
+}
+.lg-seal-icon { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: hsl(var(--td-mint) / .2); }
+.lg-warn { color: hsl(var(--td-rose)); border-color: hsl(var(--td-rose) / .6); background: hsl(var(--td-rose) / .1); }
+.lg-pending { color: hsl(var(--td-dim)); border-color: hsl(var(--td-line) / .25); background: transparent; }
+.lg-hash { font: 11px/1.5 "IBM Plex Mono", monospace; overflow-wrap: anywhere; word-break: break-all; color: hsl(var(--td-ink) / .85); }
+.lg-pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 11.5px/1.55 "IBM Plex Mono", monospace; max-height: 340px; overflow: auto;
+  background: hsl(250 40% 5% / .6); border: 1px solid hsl(var(--td-line) / .12); border-radius: 10px; padding: 10px; }
+.lg-timeline { position: relative; padding-left: 22px; }
+.lg-timeline::before { content: ""; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 1px;
+  background: linear-gradient(hsl(var(--td-uv) / .7), hsl(var(--td-sodium) / .5), transparent); }
+.lg-node { position: relative; }
+.lg-node::before { content: ""; position: absolute; left: -19px; top: 14px; width: 9px; height: 9px; border-radius: 2px; transform: rotate(45deg);
+  background: hsl(var(--lg-c, var(--td-uv))); box-shadow: 0 0 0 3px hsl(var(--td-bg)); }
+.lg-input { width: 100%; min-height: 40px; border-radius: 10px; padding: 8px 10px; background: hsl(250 40% 10%); color: hsl(var(--td-ink));
+  border: 1px solid hsl(var(--td-line) / .2); font: 13px "IBM Plex Sans", sans-serif; }
+.lg-input:focus-visible { outline: 2px solid hsl(var(--td-uv)); outline-offset: 1px; }
+textarea.lg-input { min-height: 96px; resize: vertical; }
+.lg-grid { display: grid; gap: 14px; padding: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) { .lg-grid { grid-template-columns: 300px minmax(0, 1fr) 360px; } }
+.lg-grid > * { min-width: 0; }
+details.lg-disc > summary { cursor: pointer; list-style: none; }
+details.lg-disc > summary::-webkit-details-marker { display: none; }

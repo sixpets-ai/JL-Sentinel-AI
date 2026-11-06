@@ -33,17 +33,22 @@ def generate_heatmap(events):
 
 
 def build_scenario():
+    from pathlib import Path
+    catalog = json.loads((Path(__file__).resolve().parent / "crime_catalog.json").read_text(encoding="utf-8"))
+    categories = {entry["label"]: entry["code"] for entry in catalog["entries"] if entry["system"] == "RNID"}
     # Labels, source links and units are deliberately fictional.
     rows = [
-        ("demo-01", "Robo a comercio · ejercicio Alfa", "Robo simulado", "alto", 19.432, -99.140, 18, "Unidad DEMO-01"),
-        ("demo-02", "Reporte de vehículo · ejercicio Beta", "Vehículo simulado", "medio", 19.416, -99.162, 9, "Unidad DEMO-02"),
-        ("demo-03", "Alerta en almacén · ejercicio Gamma", "Intrusión simulada", "alto", 19.448, -99.121, 24, "Unidad DEMO-03"),
-        ("demo-04", "Incidencia en vía pública · ejercicio Alfa", "Incidencia simulada", "bajo", 19.434, -99.142, 5, "Unidad DEMO-01"),
-        ("demo-05", "Reporte a comercio · ejercicio Beta", "Robo simulado", "medio", 19.407, -99.152, 11, "Unidad DEMO-02"),
-        ("demo-06", "Señal por validar · ejercicio Gamma", "Reporte simulado", "bajo", 19.458, -99.136, 4, "Unidad DEMO-03"),
+        ("demo-01", "Robo a comercio · ejercicio Alfa", "Robo a negocio", "alto", 19.432, -99.140, 18, "Unidad DEMO-01"),
+        ("demo-02", "Reporte de vehículo · ejercicio Beta", "Robo de vehículo automotor - Coche de 4 ruedas", "medio", 19.416, -99.162, 9, "Unidad DEMO-02"),
+        ("demo-03", "Extorsión · ejercicio Gamma", "Extorsión presencial", "alto", 19.448, -99.121, 24, "Unidad DEMO-03"),
+        ("demo-04", "Incidencia en vía pública · ejercicio Alfa", "Robo a transeúnte en vía pública", "bajo", 19.434, -99.142, 5, "Unidad DEMO-01"),
+        ("demo-05", "Reporte a comercio · ejercicio Beta", "Robo a negocio", "medio", 19.407, -99.152, 11, "Unidad DEMO-02"),
+        ("demo-06", "Señal por validar · ejercicio Gamma", "Amenazas", "bajo", 19.458, -99.136, 4, "Unidad DEMO-03"),
     ]
     keys = ("id", "title", "category", "impact", "lat", "lng", "mentions", "unit")
     incidents = [dict(zip(keys, row)) for row in rows]
+    for incident in incidents:
+        incident["catalogCode"] = categories[incident["category"]]
     nodes = [{"id": e["id"], "label": e["title"], "kind": "incident"} for e in incidents]
     nodes += [
         {"id": "boletin-demo", "label": "Boletín ficticio · DEMO", "kind": "source"},
