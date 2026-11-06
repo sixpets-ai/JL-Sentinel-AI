@@ -15,6 +15,215 @@ tags:
   - name: gemini
     description: Gemini AI chat and image operations
 paths:
+  /global/tactical:
+    get:
+      operationId: getTacticalScenario
+      responses:
+        "200":
+          description: Explicitly synthetic hackathon scenario processed by Python
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TacticalScenario" }
+  /global/tactical/alerts:
+    get:
+      operationId: listTacticalAlerts
+      responses:
+        "200":
+          description: Own persisted demonstration alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TacticalAlert" }
+    post:
+      operationId: createTacticalAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TacticalAlertInput" }
+      responses:
+        "201":
+          description: Persisted simulated alert, route result and preliminary report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TacticalAlert" }
+  /global/tactical/alerts/{id}/report:
+    post:
+      operationId: retryTacticalReport
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Regenerated own preliminary executive report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TacticalAlert" }
+  /global/auth/register:
+    post:
+      operationId: registerGlobalUser
+      tags: [global]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlobalCredentials" }
+      responses:
+        "201":
+          description: Citizen account and secure cookie created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalSession" }
+  /global/auth/login:
+    post:
+      operationId: loginGlobalUser
+      tags: [global]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlobalCredentials" }
+      responses:
+        "200":
+          description: Authenticated session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalSession" }
+  /global/auth/me:
+    get:
+      operationId: getGlobalSession
+      tags: [global]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalSession" }
+  /global/auth/logout:
+    post:
+      operationId: logoutGlobalUser
+      tags: [global]
+      responses:
+        "204": { description: Session revoked }
+  /global/snapshot:
+    get:
+      operationId: getGlobalSnapshot
+      tags: [global]
+      parameters:
+        - name: topic
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/GlobalTopic" }
+      responses:
+        "200":
+          description: Public source snapshot with provenance and honest availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalSnapshot" }
+  /global/report:
+    post:
+      operationId: createGlobalBrief
+      tags: [global]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlobalBriefInput" }
+      responses:
+        "200":
+          description: Gemini summary grounded in public source titles
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalBrief" }
+  /global/briefs:
+    get:
+      operationId: listGlobalBriefs
+      tags: [global]
+      parameters:
+        - name: topic
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/GlobalTopic" }
+      responses:
+        "200":
+          description: Current user's persisted reports for the selected topic
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GlobalBrief" }
+  /global/routes:
+    post:
+      operationId: simulateGlobalRoute
+      tags: [global]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlobalRouteInput" }
+      responses:
+        "200":
+          description: Educational route simulation, not dispatch or navigation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalRoute" }
+  /global/governance:
+    get:
+      operationId: getGlobalGovernance
+      tags: [global]
+      responses:
+        "200":
+          description: Actual IBM monitor status or explicit missing configuration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalGovernance" }
+  /global/audit:
+    post:
+      operationId: submitGlobalAudit
+      tags: [global]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlobalAuditInput" }
+      responses:
+        "200":
+          description: IBM evaluation submission state, never a guarantee
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalGovernance" }
+  /global/users:
+    get:
+      operationId: listGlobalUsers
+      tags: [global]
+      responses:
+        "200":
+          description: Director only
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GlobalUser" }
+  /global/users/{id}/role:
+    patch:
+      operationId: updateGlobalRole
+      tags: [global]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlobalRoleInput" }
+      responses:
+        "200":
+          description: Updated role; existing tokens checked against database
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalUser" }
   /healthz:
     get:
       operationId: healthCheck
@@ -248,6 +457,210 @@ paths:
 
 components:
   schemas:
+    TacticalIncident:
+      type: object
+      required: [id, title, category, impact, lat, lng, mentions, unit]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        category: { type: string }
+        impact: { type: string, enum: [alto, medio, bajo] }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        mentions: { type: integer }
+        unit: { type: string }
+    TacticalHeatPoint:
+      type: object
+      required: [lat, lng, weight, count]
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+        weight: { type: number }
+        count: { type: integer }
+    TacticalNode:
+      type: object
+      required: [id, label, kind]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        kind: { type: string, enum: [incident, source, zone] }
+    TacticalEdge:
+      type: object
+      required: [id, source, target, label]
+      properties:
+        id: { type: string }
+        source: { type: string }
+        target: { type: string }
+        label: { type: string }
+    TacticalScenario:
+      type: object
+      required: [simulation, disclaimer, incidents, heatpoints, nodes, edges]
+      properties:
+        simulation: { type: boolean }
+        disclaimer: { type: string }
+        incidents:
+          type: array
+          items: { $ref: "#/components/schemas/TacticalIncident" }
+        heatpoints:
+          type: array
+          items: { $ref: "#/components/schemas/TacticalHeatPoint" }
+        nodes:
+          type: array
+          items: { $ref: "#/components/schemas/TacticalNode" }
+        edges:
+          type: array
+          items: { $ref: "#/components/schemas/TacticalEdge" }
+    TacticalAlertInput:
+      type: object
+      additionalProperties: false
+      required: [incidentId]
+      properties:
+        incidentId: { type: string, minLength: 1, maxLength: 40 }
+    TacticalAlert:
+      type: object
+      required: [id, folio, simulation, createdAt, incident, unit, reportStatus, report, routeStatus, route, disclaimer]
+      properties:
+        id: { type: string }
+        folio: { type: string }
+        simulation: { type: boolean }
+        createdAt: { type: string }
+        incident: { $ref: "#/components/schemas/TacticalIncident" }
+        unit: { type: string }
+        reportStatus: { type: string, enum: [pending, ready, failed] }
+        report: { type: string }
+        routeStatus: { type: string, enum: [not_required, ready, failed] }
+        route:
+          oneOf:
+            - { $ref: "#/components/schemas/GlobalRoute" }
+            - { type: "null" }
+        disclaimer: { type: string }
+    GlobalTopic:
+      type: string
+      enum: [earthquake, flood, wildfire, humanitarian]
+    GlobalRole:
+      type: string
+      enum: [ciudadano, oficial, director]
+    GlobalCredentials:
+      type: object
+      required: [username, password]
+      additionalProperties: false
+      properties:
+        username: { type: string, minLength: 3, maxLength: 40, pattern: "^[a-zA-Z0-9_.-]+$" }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    GlobalUser:
+      type: object
+      required: [id, username, role]
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        role: { $ref: "#/components/schemas/GlobalRole" }
+    GlobalSession:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: "#/components/schemas/GlobalUser" }
+    GlobalRoleInput:
+      type: object
+      required: [role]
+      additionalProperties: false
+      properties:
+        role: { $ref: "#/components/schemas/GlobalRole" }
+    GlobalSource:
+      type: object
+      required: [name, status, detail]
+      properties:
+        name: { type: string }
+        status: { type: string, enum: [live, cached, unavailable, not_configured] }
+        detail: { type: string }
+    GlobalEvent:
+      type: object
+      required: [id, title, source, url, observedAt, lat, lng, mentions, kind]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        source: { type: string }
+        url: { type: string }
+        observedAt: { type: string }
+        publishedAt: { type: ["string", "null"] }
+        lat: { type: ["number", "null"] }
+        lng: { type: ["number", "null"] }
+        mentions: { type: number }
+        kind: { type: string, enum: [coverage, earthquake, local_demo, social] }
+    GlobalSnapshot:
+      type: object
+      required: [topic, fetchedAt, cached, events, sources, notice]
+      properties:
+        topic: { $ref: "#/components/schemas/GlobalTopic" }
+        fetchedAt: { type: string }
+        cached: { type: boolean }
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/GlobalEvent" }
+        sources:
+          type: array
+          items: { $ref: "#/components/schemas/GlobalSource" }
+        notice: { type: string }
+    GlobalBriefInput:
+      type: object
+      required: [topic]
+      additionalProperties: false
+      properties:
+        topic: { $ref: "#/components/schemas/GlobalTopic" }
+    GlobalBrief:
+      type: object
+      required: [id, text, createdAt, sourceUrls, auditStatus]
+      properties:
+        id: { type: integer }
+        text: { type: string }
+        createdAt: { type: string }
+        sourceUrls: { type: array, items: { type: string } }
+        auditStatus: { type: string }
+    GlobalPoint:
+      type: object
+      required: [name, lat, lng]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+    GlobalRouteInput:
+      type: object
+      required: [points]
+      additionalProperties: false
+      properties:
+        points:
+          type: array
+          minItems: 2
+          maxItems: 8
+          items: { $ref: "#/components/schemas/GlobalPoint" }
+    GlobalRoute:
+      type: object
+      required: [points, distanceKm, algorithm, disclaimer]
+      properties:
+        points:
+          type: array
+          items: { $ref: "#/components/schemas/GlobalPoint" }
+        distanceKm: { type: number }
+        algorithm: { type: string }
+        disclaimer: { type: string }
+    GlobalAuditInput:
+      type: object
+      required: [prompt, response]
+      additionalProperties: false
+      properties:
+        briefId: { type: integer, minimum: 1 }
+        prompt: { type: string, minLength: 1, maxLength: 4000 }
+        response: { type: string, minLength: 1, maxLength: 8000 }
+    GlobalGovernance:
+      type: object
+      required: [status, detail, checkedAt, missing, metrics]
+      properties:
+        status: { type: string, enum: [not_configured, connected, submitted, unavailable] }
+        detail: { type: string }
+        checkedAt: { type: string }
+        missing: { type: array, items: { type: string } }
+        runId: { type: ["string", "null"] }
+        metrics: { type: string }
     HealthStatus:
       type: object
       properties:

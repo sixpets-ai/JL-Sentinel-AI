@@ -1,0 +1,86 @@
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+.td-root {
+  --td-bg: 248 38% 6%;
+  --td-ink: 236 40% 92%;
+  --td-dim: 238 16% 64%;
+  --td-line: 250 60% 80%;
+  --td-uv: 262 92% 72%;
+  --td-sodium: 32 98% 60%;
+  --td-rose: 344 88% 66%;
+  --td-mint: 166 70% 58%;
+  min-height: 100dvh;
+  color: hsl(var(--td-ink));
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background:
+    radial-gradient(1100px 600px at 85% -10%, hsl(262 70% 22% / .55), transparent 60%),
+    radial-gradient(800px 500px at -10% 110%, hsl(28 80% 22% / .35), transparent 60%),
+    hsl(var(--td-bg));
+  position: relative;
+  isolation: isolate;
+}
+.td-root::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1; opacity: .35;
+  background-image: linear-gradient(hsl(var(--td-line) / .05) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--td-line) / .05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 85%);
+}
+.td-display { font-family: "Chakra Petch", sans-serif; letter-spacing: .02em; }
+.td-mono { font-family: "IBM Plex Mono", monospace; }
+.td-label { font: 600 10.5px "IBM Plex Mono", monospace; letter-spacing: .18em; text-transform: uppercase; color: hsl(var(--td-dim)); }
+.td-glass {
+  background: linear-gradient(160deg, hsl(250 40% 16% / .55), hsl(250 40% 8% / .45));
+  border: 1px solid hsl(var(--td-line) / .13);
+  border-radius: 16px;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: inset 0 1px 0 hsl(var(--td-line) / .1), 0 24px 48px -24px hsl(262 80% 4% / .8);
+}
+.td-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 16px;
+  border-radius: 10px; font: 600 13px "Chakra Petch", sans-serif; letter-spacing: .06em; text-transform: uppercase;
+  color: hsl(250 40% 8%); background: linear-gradient(120deg, hsl(var(--td-sodium)), hsl(18 95% 62%));
+  border: 0; cursor: pointer; text-decoration: none; transition: transform .15s, opacity .15s;
+}
+.td-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.td-btn:disabled { opacity: .45; cursor: not-allowed; }
+.td-btn:focus-visible, .td-chip:focus-visible, .td-inc:focus-visible { outline: 2px solid hsl(var(--td-uv)); outline-offset: 2px; }
+.td-btn-ghost { color: hsl(var(--td-ink)); background: hsl(var(--td-line) / .06); border: 1px solid hsl(var(--td-line) / .18); }
+.td-chip {
+  min-height: 34px; padding: 0 12px; border-radius: 999px; font: 500 11px "IBM Plex Mono", monospace;
+  color: hsl(var(--td-ink)); background: hsl(var(--td-line) / .05); border: 1px solid hsl(var(--td-line) / .16); cursor: pointer;
+}
+.td-chip[aria-pressed="true"] { background: hsl(var(--td-uv) / .2); border-color: hsl(var(--td-uv) / .7); }
+.td-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font: 600 10px "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; border: 1px solid currentColor; }
+.td-banner {
+  border: 1px solid hsl(var(--td-sodium) / .45); background: hsl(var(--td-sodium) / .08); color: hsl(38 95% 78%);
+  border-radius: 12px; padding: 10px 14px; font-size: 13px;
+}
+.td-grid { display: grid; gap: 14px; padding: 14px; grid-template-columns: minmax(0, 1fr); }
+.td-grid > *, .td-grid .td-glass { min-width: 0; }
+@media (min-width: 1100px) { .td-grid { grid-template-columns: 280px minmax(0, 1fr) 380px; } }
+.td-map { height: 460px; border-radius: 16px; overflow: hidden; position: relative; background: hsl(250 40% 7%); }
+@media (max-width: 767px) { .td-map { height: 340px; } }
+.td-map .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) saturate(.5) brightness(.75) contrast(1.05); }
+.td-map .leaflet-control-attribution { background: hsl(250 40% 8% / .8) !important; color: hsl(var(--td-dim)); }
+.td-map .leaflet-control-attribution a { color: hsl(var(--td-uv)); }
+.td-map .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 38px; background: hsl(250 40% 12%); color: hsl(var(--td-ink)); border-color: hsl(var(--td-line) / .2); }
+.td-heat { position: absolute; inset: 0; pointer-events: none; z-index: 350; mix-blend-mode: screen; }
+.td-graph { width: 100%; min-width: 0; max-width: 100%; height: 340px; overflow: hidden; border-radius: 12px; background: radial-gradient(circle at 50% 40%, hsl(262 50% 16% / .6), transparent 70%); }
+.td-inc {
+  width: 100%; text-align: left; display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 12px;
+  border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; transition: background .15s, border-color .15s;
+}
+.td-inc:hover { background: hsl(var(--td-line) / .05); }
+.td-inc[aria-pressed="true"] { background: hsl(var(--td-uv) / .12); border-color: hsl(var(--td-uv) / .5); }
+.td-skel { border-radius: 10px; background: linear-gradient(90deg, hsl(var(--td-line) / .05), hsl(var(--td-line) / .12), hsl(var(--td-line) / .05)); background-size: 200% 100%; animation: td-sh 1.4s infinite linear; }
+@keyframes td-sh { to { background-position: -200% 0; } }
+.td-rise { animation: td-rise .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes td-rise { from { opacity: 0; transform: translateY(10px); } }
+.td-pulse { animation: td-pulse 1.6s ease-in-out infinite; }
+@keyframes td-pulse { 50% { opacity: .35; } }
+.td-scroll { max-height: 300px; overflow-y: auto; scrollbar-width: thin; }
+.td-report { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; max-height: 320px; overflow-y: auto; padding-right: 4px; }
+.td-root [data-testid="text-alert-folio"] { min-width: 0; overflow-wrap: anywhere; }
+.td-select { width: 100%; min-height: 40px; border-radius: 10px; padding: 0 10px; background: hsl(250 40% 10%); color: hsl(var(--td-ink)); border: 1px solid hsl(var(--td-line) / .2); font: 12px "IBM Plex Mono", monospace; }
+@media (prefers-reduced-motion: reduce) { .td-rise, .td-pulse, .td-skel { animation: none; } }
