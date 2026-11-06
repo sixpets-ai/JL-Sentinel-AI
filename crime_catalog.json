@@ -1,0 +1,2410 @@
+{
+  "version": "RNID-2026-v1.0+ICCS-1.0-es",
+  "warning": "Catálogos estadísticos, no determinación de culpabilidad ni código penal. RNID2026-### son identificadores INTERNOS de SANTI, no códigos oficiales. Las etiquetas RNID se transcriben de la tabla de las páginas 29–32 del manual. Su tabla contiene 78 renglones aunque la introducción institucional anuncia 71 delitos; se conserva la tabla íntegra y se declara esta discrepancia, sin inventar ni suprimir categorías. ICCS conserva sus códigos oficiales con prefijo de sistema. No hay equivalencia jurídica automática RNID/ICCS, catálogo penal municipal/federal completo ni certificación de Interpol.",
+  "sources": [
+    {
+      "system": "RNID",
+      "version": "2026 · Manual v1.0 · tabla pp.29–32",
+      "url": "https://www.gob.mx/cms/uploads/attachment/file/1058582/Manual_metodol_gico_RNID_V1.0_VF__2_.pdf",
+      "sha256": "ca00bfb7a30ceb91a4ca2144016da687730b8ba3d2d0ecea7adb69e34b3ce99e",
+      "scope": "Etiquetas de la tabla íntegra de conductas del fuero común; IDs internos, no tipificación legal."
+    },
+    {
+      "system": "ICCS",
+      "version": "1.0 · correspondencia en español",
+      "url": "https://www.unodc.org/documents/data-and-analysis/statistics/crime/ICCS/iccs_es.xlsx",
+      "sha256": "01ec11e3783bec461e5d3baf9a86b47d56940c9b54f90e915af090f8578a0440",
+      "scope": "Todos los códigos y nombres presentes en las once hojas de la plantilla oficial de correspondencia."
+    }
+  ],
+  "entries": [
+    {
+      "code": "RNID2026-001",
+      "label": "Homicidio doloso",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-002",
+      "label": "Tentativa de homicidio doloso",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-003",
+      "label": "Homicidio culposo",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-004",
+      "label": "Lesiones dolosas",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-005",
+      "label": "Lesiones culposas",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-006",
+      "label": "Feminicidio",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-007",
+      "label": "Tentativa de feminicidio",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-008",
+      "label": "Aborto",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-009",
+      "label": "Otros delitos que atentan contra la vida y la integridad corporal",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-010",
+      "label": "Secuestro extorsivo",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-011",
+      "label": "Secuestro con calidad de rehén",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-012",
+      "label": "Secuestro para causar daño",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-013",
+      "label": "Secuestro exprés",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-014",
+      "label": "Tráfico de menores",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-015",
+      "label": "Rapto",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-016",
+      "label": "Privación ilegal de la libertad",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-017",
+      "label": "Retención o sustracción de menores e incapaces",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-018",
+      "label": "Otros delitos que atentan contra la libertad personal",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-019",
+      "label": "Abuso sexual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-020",
+      "label": "Acoso sexual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-021",
+      "label": "Hostigamiento sexual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-022",
+      "label": "Violación simple",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-023",
+      "label": "Violación equiparada",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-024",
+      "label": "Incesto",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-025",
+      "label": "Violación a la intimidad sexual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-026",
+      "label": "Otros delitos que atentan contra la libertad y la seguridad sexual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-027",
+      "label": "Robo a casa habitación",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-028",
+      "label": "Robo de vehículo automotor - Coche de 4 ruedas",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-029",
+      "label": "Robo de vehículo automotor - Motocicleta",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-030",
+      "label": "Robo de vehículo automotor - Embarcaciones pequeñas y grandes",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-031",
+      "label": "Robo de autopartes",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-032",
+      "label": "Robo a transportista",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-033",
+      "label": "Robo a transeúnte en vía pública",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-034",
+      "label": "Robo a transeúnte en espacio abierto al público",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-035",
+      "label": "Robo en transporte público individual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-036",
+      "label": "Robo en transporte público colectivo",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-037",
+      "label": "Robo en transporte individual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-038",
+      "label": "Robo a institución bancaria",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-039",
+      "label": "Robo a negocio",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-040",
+      "label": "Robo de ganado",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-041",
+      "label": "Robo de maquinaria - Herramienta industrial o agrícola",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-042",
+      "label": "Robo de maquinaria - Tractores",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-043",
+      "label": "Robo de maquinaria - Cables, tubos y otros objetos destinados a servicios públicos",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-044",
+      "label": "Fraude",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-045",
+      "label": "Abuso de confianza",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-046",
+      "label": "Extorsión presencial",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-047",
+      "label": "Tentativa de extorsión presencial",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-048",
+      "label": "Extorsión por otros medios",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-049",
+      "label": "Tentativa de extorsión por otros medios",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-050",
+      "label": "Daño a la propiedad",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-051",
+      "label": "Despojo",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-052",
+      "label": "Otros delitos contra el patrimonio",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-053",
+      "label": "Violencia familiar",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-054",
+      "label": "Violencia de género en todas sus modalidades distinta a la violencia familiar",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-055",
+      "label": "Incumplimiento de obligaciones de asistencia familiar",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-056",
+      "label": "Otros delitos contra la familia",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-057",
+      "label": "Corrupción de menores",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-058",
+      "label": "Trata de personas con fines de explotación sexual",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-059",
+      "label": "Trata de personas con fines de trabajo o servicios forzados",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-060",
+      "label": "Trata de personas con fines de tráfico de órganos",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-061",
+      "label": "Trata de personas con otros fines",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-062",
+      "label": "Pornografía infantil",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-063",
+      "label": "Discriminación",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-064",
+      "label": "Otros delitos contra la sociedad",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-065",
+      "label": "Narcomenudeo posesión simple",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-066",
+      "label": "Narcomenudeo con fines de venta",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-067",
+      "label": "Amenazas",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-068",
+      "label": "Allanamiento de morada",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-069",
+      "label": "Evasión de presos",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-070",
+      "label": "Falsedad",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-071",
+      "label": "Falsificación",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-072",
+      "label": "Contra el medio ambiente",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-073",
+      "label": "Delitos cometidos por servidores públicos",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-074",
+      "label": "Electorales",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-075",
+      "label": "Delitos contra la administración de justicia",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-076",
+      "label": "Suplantación y usurpación de identidad",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-077",
+      "label": "Tortura",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "RNID2026-078",
+      "label": "Otros delitos del Fuero Común",
+      "system": "RNID",
+      "level": 1
+    },
+    {
+      "code": "ICCS-01",
+      "label": "Actos que causan la muerte o que tienen la intención de causar la muerte",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0101",
+      "label": "Homicidio intencional",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0102",
+      "label": "Tentativa de homicidio intencional",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0103",
+      "label": "Homicidio no intencional",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-01031",
+      "label": "Homicidio no culposo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-01032",
+      "label": "Homicidio culposo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-010321",
+      "label": "Homicidio por tránsito vehicular",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-010322",
+      "label": "Homicidio no ocasionado por tránsito vehicular",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-0104",
+      "label": "Suicidio asistido o incitación al suicidio",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-01041",
+      "label": "Suicidio asistido",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-01049",
+      "label": "Otros actos de suicidio asistido o incitación al suicidio",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0105",
+      "label": "Eutanasia",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0106",
+      "label": "Feticidio ilegal",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0107",
+      "label": "Homicidio ilícito relacionado con conflictos armados",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0109",
+      "label": "Otros actos que causan la muerte o que tienen la intención de causar la muerte",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02",
+      "label": "Actos que causan daños o tienen la intención de causar daños a las personas",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0201",
+      "label": "Agresiones y amenazas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02011",
+      "label": "Agresión",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020111",
+      "label": "Agresión grave",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020112",
+      "label": "Agresión leve",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02012",
+      "label": "Amenaza",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020121",
+      "label": "Amenaza grave",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020122",
+      "label": "Amenaza leve",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02019",
+      "label": "Otras formas de agresiones y amenazas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0202",
+      "label": "Actos contra la libertad",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02021",
+      "label": "Secuestro de menores",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020211",
+      "label": "Secuestro por progenitores",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020212",
+      "label": "Secuestro por otro familiar",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020213",
+      "label": "Secuestro por un tutor legal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020219",
+      "label": "Otras formas de secuestro de menores",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02022",
+      "label": "Privación de libertad",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020221",
+      "label": "Secuestro",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020222",
+      "label": "Retención ilegal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020223",
+      "label": "Secuestro de vehículos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020229",
+      "label": "Otras formas de privación de libertad",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02029",
+      "label": "Otros actos contra la libertad",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020291",
+      "label": "Adopción ilegal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020292",
+      "label": "Matrimonio forzado",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020299",
+      "label": "Otros actos contra la libertad",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-0203",
+      "label": "Esclavitud y explotación",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02031",
+      "label": "Esclavitud",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02032",
+      "label": "Trabajo forzoso",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020321",
+      "label": "Trabajo forzoso en servicios domésticos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020322",
+      "label": "Trabajo forzoso en servicios industriales",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020323",
+      "label": "Trabajo forzoso para el Estado o las fuerzas armadas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020329",
+      "label": "Otras formas de trabajo forzoso",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02039",
+      "label": "Otros actos de esclavitud y explotación",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0204",
+      "label": "Trata de personas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02041",
+      "label": "Trata de personas con fines de explotación sexual",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02042",
+      "label": "Trata de personas con fines de trabajo o servicios forzosos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02043",
+      "label": "Trata de personas con fines de extracción de órganos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02049",
+      "label": "Trata de personas con otros fines",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0205",
+      "label": "Coacción",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02051",
+      "label": "Extorsión o chantaje",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02059",
+      "label": "Otros actos de coacción",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0206",
+      "label": "Negligencia",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02061",
+      "label": "Negligencia en situaciones de personas bajo cuidado",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020611",
+      "label": "Negligencia en situaciones de menores bajo cuidado",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020612",
+      "label": "Negligencia en situaciones de otras personas dependientes bajo cuidado",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020619",
+      "label": "Otras formas de negligencia en situaciones de personas bajo cuidado",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02062",
+      "label": "Negligencia profesional",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02063",
+      "label": "Negligencia relacionada con la conducción de un vehículo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02069",
+      "label": "Otros actos de negligencia",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0207",
+      "label": "Actos peligrosos",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02071",
+      "label": "Actos que ponen en peligro la salud",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02072",
+      "label": "Utilización de un vehículo bajo los efectos de sustancias psicoactivas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020721",
+      "label": "Utilización de un vehículo bajo los efectos del alcohol",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020722",
+      "label": "Utilización de un vehículo bajo los efectos de drogas ilícitas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020729",
+      "label": "Utilización de un vehículo bajo los efectos de otras sustancias psicoactivas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02079",
+      "label": "Otros actos peligrosos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0208",
+      "label": "Actos dirigidos a inducir miedo o angustia emocional",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02081",
+      "label": "Hostigamiento",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-020811",
+      "label": "Hostigamiento en el trabajo",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-020819",
+      "label": "Otras formas de hostigamiento",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-02082",
+      "label": "Acoso",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02089",
+      "label": "Otros actos dirigidos a inducir miedo o angustia emocional",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0209",
+      "label": "Difamación o insulto",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02091",
+      "label": "Difamación o insulto debido a las características de la víctima o a los atributos que se le imputan",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02092",
+      "label": "Difamación o insulto debido a las creencias o valores que se le imputan a la víctima",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02099",
+      "label": "Otras formas de difamación o insulto",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0210",
+      "label": "Discriminación",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02101",
+      "label": "Discriminación de personas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02102",
+      "label": "Discriminación de grupos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02109",
+      "label": "Otras formas de discriminación",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0211",
+      "label": "Transgresiones contra las personas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-02111",
+      "label": "Invasión de la intimidad",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-02119",
+      "label": "Otras transgresiones contra las personas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0219",
+      "label": "Otros actos que causan daños o que tienen la intención de causar daños a las personas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-03",
+      "label": "Actos lesivos de naturaleza sexual",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0301",
+      "label": "Violencia sexual",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-03011",
+      "label": "Violación",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-030111",
+      "label": "Violación con uso de la fuerza",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030112",
+      "label": "Violación sin uso de la fuerza",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030113",
+      "label": "Violación por presunción legal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030119",
+      "label": "Otras formas de violación",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-03012",
+      "label": "Agresión sexual",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-030121",
+      "label": "Agresión sexual física",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030122",
+      "label": "Agresión sexual no física",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030129",
+      "label": "Otros actos de agresión sexual no clasificados en otra parte",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-03019",
+      "label": "Otros actos de violencia sexual",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0302",
+      "label": "Explotación sexual",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-03021",
+      "label": "Explotación sexual de adultos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-03022",
+      "label": "Explotación sexual de menores",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-030221",
+      "label": "Pornografía infantil",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030222",
+      "label": "Prostitución infantil",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030223",
+      "label": "Captación de menores con fines sexuales",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-030229",
+      "label": "Otras formas de explotación sexual de menores",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-03029",
+      "label": "Otros actos de explotación sexual",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0309",
+      "label": "Otros actos lesivos de naturaleza sexual",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-04",
+      "label": "Actos contra la propiedad que entrañan violencia o amenaza de violencia contra las personas",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0401",
+      "label": "Robo",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-04011",
+      "label": "Robo a personas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-040111",
+      "label": "Robo a personas en lugares públicos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-040112",
+      "label": "Robo a personas en lugares privados",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-040119",
+      "label": "Otras formas de robo a personas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-04012",
+      "label": "Robo de objetos de valor o bienes en tránsito",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-040121",
+      "label": "Robo de automóviles o vehículos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-040129",
+      "label": "Otras formas de robo de objetos de valor o bienes en tránsito",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-04013",
+      "label": "Robo a establecimientos o instituciones",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-040131",
+      "label": "Robo a instituciones financieras",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-040132",
+      "label": "Robo a instituciones no financieras",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-04014",
+      "label": "Robo de ganado",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-04019",
+      "label": "Otros actos de robo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0409",
+      "label": "Otros actos contra la propiedad que entrañan violencia o amenaza de violencia contra las personas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-05",
+      "label": "Actos contra la propiedad solamente",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0501",
+      "label": "Robo con entrada ilícita",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-05011",
+      "label": "Robo con entrada ilícita en locales comerciales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05012",
+      "label": "Robo con entrada ilícita en domicilios particulares",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-050121",
+      "label": "Robo con entrada ilícita en residencias particulares permanentes",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-050122",
+      "label": "Robo con entrada ilícita en residencias particulares no permanentes",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-05013",
+      "label": "Robo con entrada ilícita en locales públicos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05019",
+      "label": "Otros actos de robo con entrada ilícita",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0502",
+      "label": "Hurto",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-05021",
+      "label": "Hurto de vehículos de motor o de sus piezas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-050211",
+      "label": "Hurto de vehículos terrestres de motor",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-050212",
+      "label": "Utilización ilegal de vehículos terrestres de motor",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-050213",
+      "label": "Hurto de piezas de vehículos terrestres de motor",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-050219",
+      "label": "Otras formas de hurto de vehículos de motor o de sus piezas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-05022",
+      "label": "Hurto de bienes personales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-050221",
+      "label": "Hurto de bienes personales a una persona",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-050222",
+      "label": "Hurto de bienes personales de un vehículo",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-050229",
+      "label": "Otras formas de hurto de bienes personales",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-05023",
+      "label": "Hurto de bienes comerciales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-050231",
+      "label": "Hurto en tiendas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-050239",
+      "label": "Otras formas de hurto de bienes comerciales",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-05024",
+      "label": "Hurto de bienes públicos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05025",
+      "label": "Hurto de ganado",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05026",
+      "label": "Hurto de servicios",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05029",
+      "label": "Otros actos de hurto",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0503",
+      "label": "Delitos contra la propiedad intelectual",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0504",
+      "label": "Daños a la propiedad",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-05041",
+      "label": "Daños a bienes públicos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05042",
+      "label": "Daños a bienes personales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05043",
+      "label": "Daños a bienes comerciales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-05049",
+      "label": "Otros daños a bienes",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0509",
+      "label": "Otros actos contra la propiedad solamente",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-06",
+      "label": "Actos relacionados con drogas sujetas a fiscalización u otras sustancias psicoactivas",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0601",
+      "label": "Actos ilícitos relacionados con drogas o precursores sujetos a fiscalización",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-06011",
+      "label": "Posesión, adquisición, utilización, cultivo o producción ilícitos de drogas sujetas a fiscalización para consumo personal",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-060111",
+      "label": "Posesión, adquisición o uso ilícitos de drogas sujetas a fiscalización para consumo personal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060112",
+      "label": "Cultivo o producción ilícitos de drogas sujetas a fiscalización para consumo personal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-06012",
+      "label": "Tráfico, cultivo o producción ilícitos de drogas o precursores sujetos a fiscalización no destinados al consumo personal",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-060121",
+      "label": "Tráfico ilícito de drogas sujetas a fiscalización no destinadas al consumo personal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060122",
+      "label": "Fabricación ilícita de drogas sujetas a fiscalización no destinadas al consumo personal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060123",
+      "label": "Cultivo ilícito de drogas sujetas a fiscalización no destinadas al consumo personal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060124",
+      "label": "Desviación ilícita de precursores no destinados al consumo personal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060129",
+      "label": "Otros actos ilícitos de tráfico, cultivo o producción de drogas o precursores sujetos a fiscalización no destinados al consumo personal",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-06019",
+      "label": "Otros actos ilícitos relacionados con drogas o precursores sujetos a fiscalización",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0602",
+      "label": "Actos ilícitos relacionados con bebidas alcohólicas, tabaco u otras sustancias sujetas a fiscalización",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-06021",
+      "label": "Producción, manipulación, posesión o uso ilícitos de productos alcohólicos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-060211",
+      "label": "Posesión o uso ilícitos de productos alcohólicos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060212",
+      "label": "Producción, tráfico o distribución ilícitos de productos alcohólicos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060219",
+      "label": "Otros actos ilícitos de producción, manipulación, posesión o uso de productos alcohólicos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-06022",
+      "label": "Producción, manipulación, posesión o uso ilícitos de productos de tabaco",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-060221",
+      "label": "Posesión o uso ilícitos de productos de tabaco",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060222",
+      "label": "Producción, tráfico o distribución ilícitos de productos de tabaco",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-060229",
+      "label": "Otros actos ilícitos de producción, manipulación, posesión o uso de productos de tabaco",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-06029",
+      "label": "Otros actos ilícitos relacionados con bebidas alcohólicas, tabaco u otras sustancias sujetas a fiscalización",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0609",
+      "label": "Otros actos relacionados con drogas sujetas a fiscalización u otras sustancias psicoactivas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-07",
+      "label": "Actos que conllevan fraude, engaño o corrupción",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0701",
+      "label": "Fraude",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-07011",
+      "label": "Fraude financiero",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-070111",
+      "label": "Fraude financiero contra el Estado",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-070112",
+      "label": "Fraude financiero contra personas naturales o jurídicas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-07019",
+      "label": "Otros actos de fraude",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0702",
+      "label": "Falsificación",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-07021",
+      "label": "Falsificación de medios de pago",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-070211",
+      "label": "Falsificación de medios de pago en efectivo",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-070212",
+      "label": "Falsificación de medios de pago distintos del efectivo",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-07022",
+      "label": "Delitos relacionados con productos falsificados",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07023",
+      "label": "Actos de falsificación de documentos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07029",
+      "label": "Otros actos de falsificación",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0703",
+      "label": "Corrupción",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-07031",
+      "label": "Soborno",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-070311",
+      "label": "Soborno activo",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-070312",
+      "label": "Soborno pasivo",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-07032",
+      "label": "Malversación o peculado",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07033",
+      "label": "Abuso de funciones",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07034",
+      "label": "Tráfico de influencias",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07035",
+      "label": "Enriquecimiento ilícito",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07039",
+      "label": "Otros actos de corrupción",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0704",
+      "label": "Actos relacionados con el producto del delito",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-07041",
+      "label": "Blanqueo de dinero",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07042",
+      "label": "Tráfico ilícito de bienes culturales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-07049",
+      "label": "Otros actos relacionados con el producto del delito",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0709",
+      "label": "Otros actos que conllevan fraude, engaño o corrupción",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08",
+      "label": "Actos contra el orden público, la autoridad y las disposiciones del Estado",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0801",
+      "label": "Actos contrarios a las normas de conducta orientadas al mantenimiento del orden público",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08011",
+      "label": "Delitos relacionados con la alteración violenta del orden público",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08012",
+      "label": "Actos relacionados con las normas y preceptos sociales y religiosos orientados al mantenimiento del orden público",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08019",
+      "label": "Otros actos contrarios a las normas de conducta orientadas al mantenimiento del orden público",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0802",
+      "label": "Actos contrarios a las normas de conducta sexual orientadas al mantenimiento del orden público",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08021",
+      "label": "Delitos de prostitución",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08022",
+      "label": "Delitos de pornografía",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08029",
+      "label": "Otros actos contrarios a las normas de conducta sexual orientadas al mantenimiento del orden público",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0803",
+      "label": "Actos relacionados con la libertad de expresión o el control de la expresión",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08031",
+      "label": "Actos contra la libertad de expresión",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08032",
+      "label": "Actos relacionados con expresiones de creencias y normas sociales controladas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-080321",
+      "label": "Violaciones de las normas sobre creencias u opiniones religiosas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-080322",
+      "label": "Violaciones de las normas sobre intolerancia e incitación al odio",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-080329",
+      "label": "Otros actos relacionados con expresiones de creencias y normas sociales controladas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-08039",
+      "label": "Otros actos relacionados con la libertad de expresión o el control de la expresión",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0804",
+      "label": "Actos contrarios a las disposiciones relativas a los ingresos públicos u otras disposiciones regulatorias",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08041",
+      "label": "Actos contrarios a las disposiciones relativas a los ingresos públicos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08042",
+      "label": "Actos contrarios a disposiciones comerciales o financieras",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08043",
+      "label": "Actos contrarios a las disposiciones sobre apuestas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08044",
+      "label": "Contrabando de bienes",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08045",
+      "label": "Manipulación del mercado o utilización indebida de información privilegiada",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08049",
+      "label": "Otros actos contra la administración pública o contra disposiciones regulatorias",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0805",
+      "label": "Actos relacionados con la migración",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08051",
+      "label": "Delitos de tráfico ilícito de migrantes",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08059",
+      "label": "Otros actos ilícitos relacionados con la migración",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0806",
+      "label": "Actos contra el sistema de justicia",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08061",
+      "label": "Obstrucción de la justicia",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08062",
+      "label": "Incumplimiento de órdenes judiciales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08063",
+      "label": "Intención delictiva",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08064",
+      "label": "Conspiración",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08069",
+      "label": "Otros actos contra el sistema de justicia",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0807",
+      "label": "Actos relacionados con las elecciones democráticas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08071",
+      "label": "Actos encaminados a influir indebidamente en los votantes en elecciones",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08079",
+      "label": "Otros actos relacionados con las elecciones democráticas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0808",
+      "label": "Actos contrarios al derecho laboral",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-08081",
+      "label": "Violaciones del derecho laboral colectivo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-08082",
+      "label": "Violaciones del derecho laboral individual",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0809",
+      "label": "Otros actos contra el orden público, la autoridad y las disposiciones del Estado",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-09",
+      "label": "Actos contra la seguridad pública y la seguridad del Estado",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-0901",
+      "label": "Actos relacionados con armas, explosivos y otros materiales destructivos",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-09011",
+      "label": "Posesión o uso de armas y explosivos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-090111",
+      "label": "Posesión o uso ilícitos de armas de fuego",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-090112",
+      "label": "Posesión o uso ilícitos de otras armas o explosivos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-090113",
+      "label": "Posesión o uso ilícitos de materiales químicos, biológicos o radiactivos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-090119",
+      "label": "Otros actos relacionados con posesión o uso de armas y explosivos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-09012",
+      "label": "Tráfico de armas y explosivos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-090121",
+      "label": "Tráfico de armas de fuego",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-090122",
+      "label": "Tráfico de otras armas o explosivos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-090123",
+      "label": "Tráfico de materiales químicos, biológicos o radiactivos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-090129",
+      "label": "Otros actos relacionados con el tráfico de armas y explosivos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-09019",
+      "label": "Otros actos relacionados con armas y explosivos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0902",
+      "label": "Actos contra la salud y la seguridad",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-09021",
+      "label": "Actos contra la salud y la seguridad en el trabajo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-09029",
+      "label": "Otros actos contra la salud y la seguridad",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0903",
+      "label": "Actos contra sistemas informáticos",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-09031",
+      "label": "Acceso ilícito a sistemas informáticos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-09032",
+      "label": "Injerencia ilícita en sistemas o datos informáticos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-090321",
+      "label": "Injerencia ilícita en sistemas informáticos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-090322",
+      "label": "Injerencia ilícita en datos informáticos",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-09033",
+      "label": "Interceptación o acceso ilícitos a datos informáticos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-09039",
+      "label": "Otros actos contra sistemas informáticos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0904",
+      "label": "Actos contra la seguridad del Estado",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0905",
+      "label": "Actos relacionados con grupos delictivos organizados",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-09051",
+      "label": "Participación en un grupo delictivo organizado",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-09059",
+      "label": "Otros actos relacionados con grupos delictivos organizados",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0906",
+      "label": "Terrorismo",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-09061",
+      "label": "Participación en un grupo terrorista",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-09062",
+      "label": "Financiación del terrorismo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-09069",
+      "label": "Otros actos relacionados con las actividades de un grupo terrorista",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-0907",
+      "label": "Infracciones de tráfico no lesivas",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-0909",
+      "label": "Otros actos contra la seguridad pública y la seguridad del Estado",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-10",
+      "label": "Actos contra el entorno natural",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-1001",
+      "label": "Actos que causan contaminación o degradación del medio ambiente",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-10011",
+      "label": "Actos que causan la contaminación o degradación del aire",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10012",
+      "label": "Actos que causan la contaminación o degradación del agua",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10013",
+      "label": "Actos que causan la contaminación o degradación del suelo",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10019",
+      "label": "Otros actos que causan contaminación o degradación del medio ambiente",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-1002",
+      "label": "Actos relacionados con el traslado o vertimiento de desechos",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-10021",
+      "label": "Actos relacionados con el traslado o vertimiento de desechos dentro de las fronteras nacionales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10022",
+      "label": "Actos relacionados con el traslado o vertimiento transfronterizos de desechos",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-1003",
+      "label": "Comercio o posesión de especies protegidas o prohibidas de la fauna y la flora",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-10031",
+      "label": "Comercio o posesión de especies protegidas de fauna y flora silvestres",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-100311",
+      "label": "Comercio o posesión de especies protegidas dentro de las fronteras nacionales",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-100312",
+      "label": "Tráfico transfronterizo de especies protegidas",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-10032",
+      "label": "Comercio o posesión de especies animales prohibidas o controladas",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10039",
+      "label": "Otras formas de comercio o posesión de especies protegidas o prohibidas de la fauna y la flora",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-1004",
+      "label": "Actos que provocan el agotamiento o la degradación de los recursos naturales",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-10041",
+      "label": "Tala ilegal",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10042",
+      "label": "Caza, pesca o recolección ilegales de fauna y flora silvestres",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10043",
+      "label": "Minería ilegal",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10049",
+      "label": "Otros actos que provocan el agotamiento o la degradación de los recursos naturales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-1009",
+      "label": "Otros actos contra el entorno natural",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-10091",
+      "label": "Actos contra los animales",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-10099",
+      "label": "Otros actos contra el entorno natural",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-11",
+      "label": "Otros actos delictivos no clasificados en otra parte",
+      "system": "ICCS",
+      "level": 1
+    },
+    {
+      "code": "ICCS-1101",
+      "label": "Actos bajo jurisdicción universal",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-11011",
+      "label": "Tortura",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-11012",
+      "label": "Piratería",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-11013",
+      "label": "Crímenes de guerra",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-110131",
+      "label": "Homicidio o tentativa de causar la muerte o lesiones graves de forma ilícita en conflictos armados",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-110132",
+      "label": "Destrucción o daños ilícitos a la propiedad en relación con conflictos armados",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-110133",
+      "label": "Violencia sexual relacionada con conflictos armados",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-110134",
+      "label": "Actos contra la libertad o la dignidad humana en relación con conflictos armados",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-110135",
+      "label": "Reclutamiento o alistamiento de niños como soldados",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-110139",
+      "label": "Otros crímenes de guerra",
+      "system": "ICCS",
+      "level": 4
+    },
+    {
+      "code": "ICCS-11014",
+      "label": "Genocidio",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-11015",
+      "label": "Crímenes de lesa humanidad",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-11016",
+      "label": "Crimen de agresión",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-11019",
+      "label": "Otros actos bajo jurisdicción universal",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-1102",
+      "label": "Actos contrarios a las leyes u otras disposiciones sobre menores",
+      "system": "ICCS",
+      "level": 2
+    },
+    {
+      "code": "ICCS-11021",
+      "label": "Delitos en razón de la condición de menor de edad",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-11029",
+      "label": "Otros actos contrarios a las leyes u otras disposiciones sobre menores",
+      "system": "ICCS",
+      "level": 3
+    },
+    {
+      "code": "ICCS-1109",
+      "label": "Otros actos delictivos no clasificados en otra parte",
+      "system": "ICCS",
+      "level": 2
+    }
+  ]
+}

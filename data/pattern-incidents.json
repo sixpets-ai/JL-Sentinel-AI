@@ -1,0 +1,20 @@
+[
+  {"id":"demo-mo-01","label":"EJ-01","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante amenaza verbal en el acceso.","timestamp":"2026-09-11T22:10:00-06:00","lat":19.49,"lng":-99.12},
+  {"id":"demo-mo-02","label":"EJ-02","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante amenaza verbal en el acceso.","timestamp":"2026-09-18T22:20:00-06:00","lat":19.48,"lng":-99.13},
+  {"id":"demo-mo-03","label":"EJ-03","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante intimidación verbal.","timestamp":"2026-09-25T22:05:00-06:00","lat":19.47,"lng":-99.12},
+  {"id":"demo-mo-04","label":"EJ-04","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante amenaza verbal en el acceso.","timestamp":"2026-10-02T22:15:00-06:00","lat":19.49,"lng":-99.14},
+  {"id":"demo-mo-05","label":"EJ-05","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante intimidación verbal.","timestamp":"2026-10-09T22:30:00-06:00","lat":19.48,"lng":-99.12},
+  {"id":"demo-mo-06","label":"EJ-06","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante amenaza verbal en el acceso.","timestamp":"2026-10-16T22:10:00-06:00","lat":19.47,"lng":-99.14},
+  {"id":"demo-mo-07","label":"EJ-07","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante amenaza verbal en el acceso.","timestamp":"2026-10-23T21:15:00-06:00","lat":19.48,"lng":-99.15},
+  {"id":"demo-mo-08","label":"EJ-08","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en tienda de proximidad mediante intimidación verbal.","timestamp":"2026-10-30T21:40:00-06:00","lat":19.49,"lng":-99.15},
+  {"id":"demo-mo-09","label":"EJ-09","zone":"centro","categoryCode":"RNID2026-039","description":"Robo en comercio mediante forzamiento de acceso.","timestamp":"2026-09-15T18:00:00-06:00","lat":19.43,"lng":-99.13},
+  {"id":"demo-mo-10","label":"EJ-10","zone":"centro","categoryCode":"RNID2026-039","description":"Robo en comercio mediante forzamiento de acceso.","timestamp":"2026-09-22T18:30:00-06:00","lat":19.44,"lng":-99.14},
+  {"id":"demo-mo-11","label":"EJ-11","zone":"centro","categoryCode":"RNID2026-039","description":"Robo en comercio mediante forzamiento de acceso.","timestamp":"2026-09-29T18:10:00-06:00","lat":19.43,"lng":-99.15},
+  {"id":"demo-mo-12","label":"EJ-12","zone":"centro","categoryCode":"RNID2026-039","description":"Robo en comercio mediante forzamiento de acceso.","timestamp":"2026-10-06T18:20:00-06:00","lat":19.42,"lng":-99.14},
+  {"id":"demo-mo-13","label":"EJ-13","zone":"sur","categoryCode":"RNID2026-039","description":"Robo en tienda mediante forzamiento de acceso.","timestamp":"2026-09-20T09:00:00-06:00","lat":19.39,"lng":-99.16},
+  {"id":"demo-mo-14","label":"EJ-14","zone":"sur","categoryCode":"RNID2026-039","description":"Reporte en comercio sin amenazas ni forzamiento; método no especificado.","timestamp":"2026-10-10T12:00:00-06:00","lat":19.40,"lng":-99.17},
+  {"id":"demo-mo-15","label":"EJ-15","zone":"sur","categoryCode":"RNID2026-039","description":"Robo en tienda mediante amenaza verbal.","timestamp":"2026-10-18T13:00:00-06:00","lat":19.38,"lng":-99.16},
+  {"id":"demo-mo-16","label":"EJ-16","zone":"norte","categoryCode":"RNID2026-039","description":"Robo en comercio mediante forzamiento de acceso.","timestamp":"2026-10-21T07:00:00-06:00","lat":19.46,"lng":-99.12},
+  {"id":"demo-mo-17","label":"EJ-17","zone":"centro","categoryCode":"RNID2026-039","description":"Reporte en comercio con método no especificado.","timestamp":"2026-11-02T14:00:00-06:00","lat":19.44,"lng":-99.12},
+  {"id":"demo-mo-18","label":"EJ-18","zone":"sur","categoryCode":"RNID2026-039","description":"Reporte en comercio con método no especificado.","timestamp":"2026-11-03T16:00:00-06:00","lat":19.40,"lng":-99.15}
+]

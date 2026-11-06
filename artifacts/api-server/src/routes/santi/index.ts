@@ -9,12 +9,18 @@ import {
   TranslateSantiUiResponse,
 } from "@workspace/api-zod";
 import { desc, count, eq } from "drizzle-orm";
+import { ensureLedgerReady, LedgerError } from "../../lib/global/ledger";
+import { agencyMethodPrompt } from "../../../../../shared/agency-profiles.mjs";
+import { patternContext } from "../../lib/global/patterns";
+import { rejectIncidentMutation } from "../../lib/global/mutation-audit";
+import { requireSession, requireRole } from "../../lib/global/security";
 
 const router = Router();
 
 const SANTI_SYSTEM_PROMPT = `Eres SANTI, asistente de inteligencia artificial de una demostración interactiva. Los datos enviados por el usuario no están verificados y pueden ser ficticios. No determines culpabilidad, identidad, nivel de riesgo ni credibilidad; no inventes hechos, antecedentes o fuentes. No recomiendes vigilancia, seguimiento, intervención, despliegue de unidades, uso de armas ni decisiones sobre personas. Resume únicamente lo que el usuario escribió, de forma neutral, sin añadir inferencias. Si hay peligro inmediato descrito, limita la respuesta a recomendar que la persona contacte al 911 o a las autoridades correspondientes. Responde únicamente con JSON válido y una propiedad "analisis" de hasta dos oraciones.`;
 
 const AGENT_CHAT_PROMPTS: Record<string, string> = {
+  lorena: agencyMethodPrompt("lorena"),
   santi: `Eres SANTI, un asistente de inteligencia artificial de una demostración. Habla con calidez, claridad y frases breves; escucha sin juzgar y, cuando ayude, formula una sola pregunta de seguimiento que no solicite datos personales. No finjas ser una persona ni una autoridad. No afirmes tener acceso a bases de datos, cámaras, OSINT, placas, ubicaciones, unidades, alertas o sistemas oficiales en tiempo real. No inventes hechos ni presentes información no verificada como cierta. No des instrucciones de vigilancia, identificación, seguimiento, despliegue de unidades, uso de armas o tácticas operativas. No uses PNL, presión ni engaño para obtener confianza o información. Si hay una emergencia real, indica que contacten directamente al 911 o a las autoridades correspondientes. No solicites datos de incidentes activos. Máximo 3 oraciones, sin markdown.`,
   emiliano: `Eres EMILIANO, un asistente de IA de demostración con tono sereno, directo y respetuoso. Responde brevemente, reconoce la pregunta y haz una sola aclaración no sensible si hace falta. No simules ser agente humano, no afirmes controlar unidades ni tener datos en vivo. No proporciones tácticas, instrucciones de despliegue, vigilancia, seguimiento o uso de armas. No uses PNL, presión ni engaño. Ante una emergencia real, recomienda contactar directamente al 911 o a las autoridades. Máximo 3 oraciones, sin markdown.`,
   maxi: `Eres MAXIMILIANO, un asistente de IA de demostración que explica límites y analiza información con cautela. Habla con naturalidad y brevedad; pregunta solo lo necesario, sin pedir datos personales. No finjas acceso a OSINT, redes sociales, cámaras, placas, expedientes o sistemas oficiales; no inventes patrones ni atribuyas delitos a personas o grupos. No des instrucciones para vigilar, identificar, rastrear o investigar personas. No uses PNL, presión ni engaño. Máximo 3 oraciones, sin markdown.`,
@@ -117,7 +123,7 @@ router.post("/agent-chat", async (req, res): Promise<void> => {
     return;
   }
 
-  const systemPrompt = AGENT_CHAT_PROMPTS[agentId];
+  const systemPrompt = `${AGENT_CHAT_PROMPTS[agentId]}\n${agencyMethodPrompt(agentId)}\n${await patternContext()}`;
   const languageName = LANGUAGE_NAMES[languageCode];
   const indigenousLanguage = ["nahuatl", "maya", "mixteco", "zapoteco", "totonaco"].includes(languageCode);
   const outputInstructions = indigenousLanguage
@@ -212,7 +218,10 @@ router.post("/translate-ui", async (req, res): Promise<void> => {
 });
 
 /* ── Reports ── */
-router.get("/reports", async (req, res) => {
+for (const method of ["patch", "put", "delete"] as const) {
+  router[method]("/reports/:id", requireSession, requireRole("oficial", "director"), rejectIncidentMutation("nexus"));
+}
+router.get("/reports", requireSession, requireRole("oficial", "director"), async (req, res) => {
   try {
     const reports = await db.select().from(incidentReports).orderBy(desc(incidentReports.createdAt)).limit(50);
     res.json(reports);
@@ -229,9 +238,11 @@ router.post("/reports", async (req, res) => {
     return;
   }
   try {
-    const [report] = await db.insert(incidentReports).values(parsed.data).returning();
+    await ensureLedgerReady();
+    const [report] = await db.transaction(async tx => tx.insert(incidentReports).values(parsed.data).returning());
     res.status(201).json(report);
   } catch (err) {
+    if (err instanceof LedgerError) { res.status(err.status).json({ error: err.message }); return; }
     req.log.error({ err }, "Failed to create report");
     res.status(500).json({ error: "Error al crear reporte" });
   }

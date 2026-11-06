@@ -1,13 +1,14 @@
 import { Router, type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
-import { db, globalUsers, globalBriefs } from "@workspace/db";
+import { db, globalUsers, globalBriefs, incidentMutationAttempts, onboardingProfiles } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import {
   RegisterGlobalUserBody, LoginGlobalUserBody, GetGlobalSnapshotQueryParams,
   CreateGlobalBriefBody, SimulateGlobalRouteBody, SubmitGlobalAuditBody,
   UpdateGlobalRoleBody, UpdateGlobalRoleParams, GetGlobalSnapshotResponse,
   GetGlobalGovernanceResponse, CreateGlobalBriefResponse, ListGlobalUsersResponse, ListGlobalBriefsResponse,
+  ListMutationAttemptsResponse,
 } from "@workspace/api-zod";
 import { ai } from "@workspace/integrations-gemini-ai";
 import {
@@ -18,30 +19,50 @@ import { getSnapshot } from "../../lib/global/osint";
 import { governanceStatus, submitAudit } from "../../lib/global/governance";
 import { simulateRoute } from "../../lib/global/routes";
 import tacticalRouter from "./tactical";
+import ledgerRouter from "./ledger";
+import { getCrimeCatalog } from "../../lib/global/catalog";
+import { rateStore } from "../../lib/infrastructure/redis";
+import { ComputeServiceError } from "../../lib/global/python-json";
+import { LedgerError } from "../../lib/global/ledger";
+import communityRouter from "./community";
+import patternsRouter from "./patterns";
+import { onboardingPolicy, enrollmentValues, validateEnrollment } from "../../lib/global/onboarding";
 
 const router = Router();
 router.use(helmet({ contentSecurityPolicy: false }));
 router.use((_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
 router.use(sameOrigin);
-router.use(rateLimit({ windowMs: 60000, limit: 100, standardHeaders: "draft-7", legacyHeaders: false }));
-const authLimit = rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false,
+router.use(rateLimit({ store: rateStore("global"), windowMs: 60000, limit: 100, standardHeaders: "draft-7", legacyHeaders: false }));
+const authLimit = rateLimit({ store: rateStore("auth"), windowMs: 15 * 60000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false,
   message: { error: "Demasiados intentos. Espera antes de volver a iniciar sesión." } });
-const expensiveLimit = rateLimit({ windowMs: 60000, limit: 5, standardHeaders: "draft-7", legacyHeaders: false,
+const expensiveLimit = rateLimit({ store: rateStore("expensive"), windowMs: 60000, limit: 5, standardHeaders: "draft-7", legacyHeaders: false,
   keyGenerator: (_req, res) => String((res.locals.user as SessionUser).id),
   message: { error: "Espera un minuto antes de solicitar más cálculos o informes." } });
 let authInFlight = 0;
 router.use(["/auth/login", "/auth/register"], authLimit);
 router.use("/tactical", tacticalRouter);
+router.get("/catalog", async (_req, res): Promise<void> => { res.json(await getCrimeCatalog()); });
+router.get("/onboarding/policy", (_req, res) => { res.json(onboardingPolicy()); });
+router.use("/ledger", ledgerRouter);
+router.get("/mutation-attempts", requireSession, requireRole("director"), async (_req, res): Promise<void> => {
+  const attempts = await db.select().from(incidentMutationAttempts).orderBy(desc(incidentMutationAttempts.id)).limit(100);
+  res.json(ListMutationAttemptsResponse.parse(attempts.map(attempt => ({ ...attempt, createdAt: attempt.createdAt.toISOString() }))));
+});
 
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterGlobalUserBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Usuario de 3–40 caracteres y contraseña de 12–128 caracteres requeridos." }); return; }
+  const enrollment = parsed.data.onboarding === undefined ? undefined : validateEnrollment(req.body.onboarding);
   if (authInFlight >= 2) { res.status(503).json({ error: "Servicio de acceso ocupado. Reintenta en unos segundos." }); return; }
   authInFlight++;
   try {
     const username = parsed.data.username.toLowerCase();
     const passwordHash = await hashPassword(parsed.data.password);
-    const [user] = await db.insert(globalUsers).values({ username, passwordHash, role: "ciudadano" }).onConflictDoNothing().returning();
+    const user = await db.transaction(async tx => {
+      const [created] = await tx.insert(globalUsers).values({ username, passwordHash, role: "ciudadano" }).onConflictDoNothing().returning();
+      if (created && enrollment) await tx.insert(onboardingProfiles).values(enrollmentValues(created, enrollment));
+      return created;
+    });
     if (!user) { res.status(409).json({ error: "Nombre de usuario no disponible." }); return; }
     createSession(res, user);
     res.status(201).json({ user: publicUser(user) });
@@ -79,6 +100,8 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 router.use(requireSession);
+router.use(patternsRouter);
+router.use(communityRouter);
 router.get("/auth/me", (_req, res) => { res.json({ user: publicUser(res.locals.user as SessionUser) }); });
 
 router.get("/snapshot", async (req, res): Promise<void> => {
@@ -177,7 +200,11 @@ router.patch("/users/:id/role", requireRole("director"), async (req, res): Promi
 });
 
 const handleError: ErrorRequestHandler = (error, req, res, _next) => {
+  if (res.headersSent) { res.destroy(); return; }
   req.log.error({ kind: error instanceof Error ? error.name : "unknown" }, "Global command request failed");
+  if (error instanceof ComputeServiceError || error instanceof LedgerError) {
+    res.status(error.status).json({ error: error.message }); return;
+  }
   res.status(500).json({ error: "No se pudo completar la operación. No se muestran resultados simulados como reales." });
 };
 router.use(handleError);

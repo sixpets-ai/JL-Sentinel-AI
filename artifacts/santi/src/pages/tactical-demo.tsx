@@ -6,6 +6,7 @@ import {
   useListTacticalAlerts, getListTacticalAlertsQueryKey,
   useCreateTacticalAlert, useRetryTacticalReport,
   useGetGlobalSession, getGetGlobalSessionQueryKey,
+  useGetCrimeCatalog, getGetCrimeCatalogQueryKey,
 } from "@workspace/api-client-react";
 import type { TacticalAlert } from "@workspace/api-client-react";
 import { ArrowLeft, Copy, Download, Lock, LogIn, RefreshCw, Siren, Share2, Route as RouteIcon } from "lucide-react";
@@ -14,6 +15,10 @@ import { TacticalHeatMap } from "@/components/tactical/heat-map";
 import { IMPACT_COLOR } from "@/components/tactical/constants";
 import { SourceGraph } from "@/components/tactical/source-graph";
 import { errorMessage, errorStatus } from "@/components/global/utils";
+import { SealBadge } from "@/components/ledger/seal-badge";
+import { ShieldCheck } from "lucide-react";
+import { generateHeatmap } from "@/lib/tactical-heat";
+import { portalFor } from "@/lib/session";
 
 const DISCLAIMER = "Plataforma de Inteligencia Preliminar. Requiere validación humana y respeto a los Derechos Humanos.";
 const fmt = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }); };
@@ -35,7 +40,7 @@ export default function TacticalDemo() {
 
   const session = useGetGlobalSession({ query: { queryKey: getGetGlobalSessionQueryKey(), retry: false } });
   const user = errorStatus(session.error) === 401 ? null : session.data?.user ?? null;
-  const canOperate = user?.role === "oficial" || user?.role === "director";
+  const canOperate = user?.role === "analista" || user?.role === "oficial" || user?.role === "director";
 
   const scenario = useGetTacticalScenario({ query: { queryKey: getGetTacticalScenarioQueryKey() } });
   const alertsQ = useListTacticalAlerts({ query: { queryKey: getListTacticalAlertsQueryKey(), enabled: canOperate, refetchInterval: 15000 } });
@@ -47,9 +52,14 @@ export default function TacticalDemo() {
   const [alertId, setAlertId] = useState<string | null>(null);
   const [showHeat, setShowHeat] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [rnid, setRnid] = useState("all");
+  const catalog = useGetCrimeCatalog({ query: { queryKey: getGetCrimeCatalogQueryKey() } });
+  const rnidEntries = useMemo(() => (catalog.data?.entries ?? []).filter((e) => e.system === "RNID"), [catalog.data]);
 
   const data = scenario.data;
-  const incidents = useMemo(() => data?.incidents ?? [], [data]);
+  const allIncidents = useMemo(() => data?.incidents ?? [], [data]);
+  const incidents = useMemo(() => rnid === "all" ? allIncidents : allIncidents.filter((i) => i.catalogCode === rnid), [allIncidents, rnid]);
+  const heat = useMemo(() => rnid === "all" ? data?.heatpoints ?? [] : generateHeatmap(incidents), [rnid, data, incidents]);
   const nodes = useMemo(() => data?.nodes ?? [], [data]);
   const edges = useMemo(() => data?.edges ?? [], [data]);
   const alerts = useMemo(() => [...(canOperate ? alertsQ.data ?? [] : [])].sort(byNewest), [alertsQ.data, canOperate]);
@@ -73,6 +83,16 @@ export default function TacticalDemo() {
   const selectIncident = (id: string) => {
     setIncidentId(id); setNodeId(nodeForIncident(id));
     setAlertId(alerts.find((a) => a.incident.id === id)?.id ?? null);
+    if (!create.isPending) create.reset();
+  };
+  const changeRnid = (code: string) => {
+    setRnid(code);
+    if (code === "all") return;
+    const visible = allIncidents.filter((i) => i.catalogCode === code);
+    if (incidentId && visible.some((i) => i.id === incidentId)) return;
+    const next = visible[0]?.id ?? null;
+    setIncidentId(next); setNodeId(next ? nodeForIncident(next) : null);
+    setAlertId(next ? alerts.find((a) => a.incident.id === next)?.id ?? null : null);
     if (!create.isPending) create.reset();
   };
   const selectNode = (nid: string | null) => {
@@ -122,7 +142,7 @@ export default function TacticalDemo() {
   }, [nodeId, nodes, edges]);
   const focusNode = nodes.find((n) => n.id === nodeId) ?? null;
 
-  const route = alert && alert.incident.id === incidentId && alert.routeStatus === "ready" ? alert.route : null;
+  const route = alert && alert.incident.id === incidentId && incidents.some((i) => i.id === alert.incident.id) && alert.routeStatus === "ready" ? alert.route : null;
   const sorted = [...incidents].sort((a, b) => ["alto", "medio", "bajo"].indexOf(a.impact) - ["alto", "medio", "bajo"].indexOf(b.impact));
 
   return (
@@ -158,8 +178,15 @@ export default function TacticalDemo() {
         {/* incidents */}
         <section className="td-glass p-3 min-w-0 td-rise order-2 lg:order-none" aria-labelledby="inc-h">
           <h2 id="inc-h" className="td-label px-1 mb-2">Incidentes ficticios · {incidents.length}</h2>
+          <label className="block px-1 mb-2 text-[11px]" style={{ color: "hsl(var(--td-dim))" }}>Filtro RNID (estadístico)
+            <select className="td-select mt-1" value={rnid} onChange={(e) => changeRnid(e.target.value)} disabled={catalog.isLoading} data-testid="select-rnid-filter">
+              <option value="all">Todas las categorías</option>
+              {rnidEntries.map((e) => <option key={e.code} value={e.code}>{e.code} · {e.label}</option>)}
+            </select>
+          </label>
+          {catalog.isError && <p className="text-[11px] px-1 mb-2" style={{ color: "hsl(var(--td-rose))" }}>Catálogo no disponible; se muestran todos.</p>}
           {scenario.isLoading && <div className="space-y-2">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="td-skel h-14" />)}</div>}
-          {data && incidents.length === 0 && <p className="text-sm p-3" style={{ color: "hsl(var(--td-dim))" }}>El escenario no contiene incidentes.</p>}
+          {data && incidents.length === 0 && <p className="text-sm p-3" style={{ color: "hsl(var(--td-dim))" }} data-testid="text-incidents-empty">{rnid === "all" ? "El escenario no contiene incidentes." : "Cero incidentes con esta categoría RNID. Es un resultado válido."}</p>}
           <ul className="space-y-1">
             {sorted.map((inc) => (
               <li key={inc.id}>
@@ -188,7 +215,7 @@ export default function TacticalDemo() {
               </span>
             </div>
             <div className="relative">
-              <TacticalHeatMap incidents={incidents} heat={data?.heatpoints ?? []} showHeat={showHeat} selectedId={incidentId} onSelect={selectIncident} route={route} />
+              <TacticalHeatMap incidents={incidents} heat={heat} showHeat={showHeat} selectedId={incidentId} onSelect={selectIncident} route={route} />
               {scenario.isLoading && <div className="absolute inset-0 td-skel !rounded-2xl z-[500]" aria-label="Cargando mapa" />}
             </div>
             <p className="td-mono text-[10.5px] px-1 pt-2" style={{ color: "hsl(var(--td-dim))" }}>La intensidad agrega pesos sintéticos de demostración; no mide delito, riesgo ni personas.</p>
@@ -201,7 +228,9 @@ export default function TacticalDemo() {
             </div>
             <p className="text-[12px] mb-2" style={{ color: "hsl(var(--td-sodium))" }}>Las correlaciones son líneas de indagación ficticias, no evidencia.</p>
             <div className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
-              {scenario.isLoading ? <div className="td-skel h-[340px]" /> : nodes.length === 0 ? (
+              {!canOperate ? (
+                <div className="h-[200px] grid place-items-center text-sm text-center gap-2" data-testid="text-graph-restricted"><p style={{ color: "hsl(var(--td-dim))" }}>El grafo requiere sesión y rol analista, oficial o director.</p><Link href={user ? portalFor(user.role) : "/acceso"} className="td-btn td-btn-ghost">{user ? "Ir a mi portal" : "Iniciar sesión"}</Link></div>
+              ) : scenario.isLoading ? <div className="td-skel h-[340px]" /> : nodes.length === 0 ? (
                 <div className="h-[200px] grid place-items-center text-sm" style={{ color: "hsl(var(--td-dim))" }}>Sin nodos en el escenario.</div>
               ) : <SourceGraph nodes={nodes} edges={edges} selectedNodeId={nodeId} onSelectNode={selectNode} />}
               <div className="min-w-0" data-testid="panel-connections">
@@ -272,6 +301,8 @@ export default function TacticalDemo() {
                     <span className="td-mono text-[12px] font-medium" data-testid="text-alert-folio">{alert.folio}</span>
                     <span className="td-badge" style={{ color: alert.reportStatus === "ready" ? "hsl(var(--td-mint))" : alert.reportStatus === "failed" ? "hsl(var(--td-rose))" : "hsl(var(--td-sodium))" }} data-testid="status-report">{REPORT_LABEL[alert.reportStatus]}</span>
                     <span className="td-badge" style={{ color: alert.routeStatus === "failed" ? "hsl(var(--td-rose))" : "hsl(var(--td-uv))" }} data-testid="status-route">{ROUTE_LABEL[alert.routeStatus]}</span>
+                    <SealBadge kind="tactical" id={alert.id} />
+                    <Link href={`/transparencia?kind=tactical&id=${encodeURIComponent(alert.id)}`} className="td-chip inline-flex items-center gap-1.5 no-underline" data-testid="link-alert-ledger"><ShieldCheck size={12} /> Expediente y enmiendas</Link>
                   </div>
                   <p className="td-mono text-[11px]" style={{ color: "hsl(var(--td-dim))" }}>{alert.incident.title} · {alert.unit} · {fmt(alert.createdAt)}</p>
                   {alert.reportStatus === "pending" && <div className="td-skel h-20" aria-label="Informe pendiente" />}

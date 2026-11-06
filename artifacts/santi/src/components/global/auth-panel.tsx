@@ -1,22 +1,22 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLoginGlobalUser, useRegisterGlobalUser, getGetGlobalSessionQueryKey } from "@workspace/api-client-react";
-import { ArrowLeft, LockKeyhole, ShieldCheck } from "lucide-react";
+import { useLoginGlobalUser } from "@workspace/api-client-react";
+import { applySession, isRestricted, portalFor } from "@/lib/session";
+import { ArrowLeft, LockKeyhole, UserPlus } from "lucide-react";
 import { errorMessage } from "./utils";
 
 const USER_RE = /^[a-zA-Z0-9_.-]{3,40}$/;
 
 export function AuthPanel() {
   const qc = useQueryClient();
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [, navigate] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [localErr, setLocalErr] = useState<string | null>(null);
   const login = useLoginGlobalUser();
-  const register = useRegisterGlobalUser();
-  const m = mode === "login" ? login : register;
+  const m = login;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -27,9 +27,8 @@ export function AuthPanel() {
       { data: { username, password } },
       { onSuccess: (session) => {
         setPassword("");
-        const key = getGetGlobalSessionQueryKey();
-        qc.removeQueries({ predicate: query => JSON.stringify(query.queryKey) !== JSON.stringify(key) });
-        qc.setQueryData(key, session);
+        applySession(qc, session);
+        if (isRestricted(session.user.role)) navigate(portalFor(session.user.role));
       } },
     );
   };
@@ -52,22 +51,15 @@ export function AuthPanel() {
             </p>
           </div>
           <ul className="space-y-2 gc-mono text-[12px]" style={{ color: "hsl(var(--gc-dim))" }}>
-            <li>CIUDADANO — consulta del panorama público</li>
-            <li>OFICIAL — informes, rutas ilustrativas, auditoría</li>
+            <li>CIUDADANO — portal propio de reportes (/ciudadano)</li>
+            <li>PATRULLA — unidad y alertas asignadas (/patrulla)</li>
+            <li>ANALISTA — informes, rutas ilustrativas, auditoría, operaciones</li>
             <li>DIRECTOR — además gobernanza IBM y roles</li>
           </ul>
         </section>
         <form onSubmit={submit} className="gc-glass p-7 space-y-5" aria-labelledby="gc-auth-title" noValidate>
-          <div className="flex gap-2" role="tablist">
-            {(["login", "register"] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={mode === k} aria-pressed={mode === k} className="gc-chip"
-                onClick={() => { setMode(k); setLocalErr(null); }} data-testid={`tab-${k}`}>
-                {k === "login" ? "Acceso" : "Registro"}
-              </button>
-            ))}
-          </div>
           <h2 id="gc-auth-title" className="gc-display text-xl font-semibold flex items-center gap-2">
-            <LockKeyhole size={18} /> {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
+            <LockKeyhole size={18} /> Iniciar sesión
           </h2>
           <label className="block space-y-2">
             <span className="gc-label">Usuario</span>
@@ -76,18 +68,14 @@ export function AuthPanel() {
           </label>
           <label className="block space-y-2">
             <span className="gc-label">Contraseña (mín. 12)</span>
-            <input className="gc-input" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"}
+            <input className="gc-input" type="password" autoComplete="current-password"
               value={password} maxLength={128} onChange={(e) => setPassword(e.target.value)} data-testid="input-password" />
           </label>
-          {mode === "register" && (
-            <p className="text-[12px] flex gap-2" style={{ color: "hsl(var(--gc-dim))" }}>
-              <ShieldCheck size={14} className="shrink-0 mt-0.5" /> Toda cuenta nueva inicia como ciudadano. Un director puede ampliar el rol.
-            </p>
-          )}
           {err && <p role="alert" className="text-[13px]" style={{ color: "hsl(var(--gc-rose))" }} data-testid="text-auth-error">{err}</p>}
           <button className="gc-btn w-full" type="submit" disabled={m.isPending} data-testid="button-auth-submit">
-            {m.isPending ? "Verificando…" : mode === "login" ? "Entrar" : "Registrar"}
+            {m.isPending ? "Verificando…" : "Entrar"}
           </button>
+          <Link href="/acceso" className="gc-btn gc-btn-ghost w-full no-underline" data-testid="link-acceso-register"><UserPlus size={14} /> Registro con consentimiento en /acceso</Link>
           <p className="gc-mono text-[11px]" style={{ color: "hsl(var(--gc-dim))" }}>Sesión por cookie HttpOnly. No se guardan tokens en el navegador.</p>
         </form>
       </div>

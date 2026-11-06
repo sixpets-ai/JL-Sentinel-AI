@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { EnrollmentInput } from './enrollmentInput';
 
 export interface GlobalCredentials {
   /**
@@ -18,4 +19,5 @@ export interface GlobalCredentials {
      * @maxLength 128
      */
   password: string;
+  onboarding?: EnrollmentInput;
 }

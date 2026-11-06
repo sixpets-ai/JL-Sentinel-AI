@@ -11,6 +11,56 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "SANTI Redis"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "SANTI Heatmap"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "SANTI Quantum"
+
+[[workflows.workflow]]
+name = "SANTI Redis"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "redis-server --bind 127.0.0.1 --port 6379 --protected-mode yes --save \"\" --appendonly no --maxmemory 128mb --maxmemory-policy noeviction"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "SANTI Heatmap"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 -m uvicorn services.heatmap_service:app --host 127.0.0.1 --port 8008 --limit-concurrency 8 --timeout-keep-alive 5"
+
+[[workflows.workflow]]
+name = "SANTI Quantum"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 -m uvicorn services.quantum_service:app --host 127.0.0.1 --port 8099 --limit-concurrency 8 --timeout-keep-alive 5"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -38,3 +88,7 @@ WATSONX_GOVERNANCE_URL = "https://api.aiopenscale.cloud.ibm.com"
 WATSONX_SERVICE_INSTANCE_ID = "3874bb6c-2101-4823-abff-34c6214c7290"
 WATSONX_MONITOR_INSTANCE_ID = "3874bb6c-2101-4823-abff-34c6214c7290"
 WATSONX_DATA_SET_ID = "3874bb6c-2101-4823-abff-34c6214c7290"
+
+[nix]
+channel = "stable-25_05"
+packages = ["redis"]

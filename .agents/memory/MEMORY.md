@@ -4,3 +4,6 @@
 - [SANTI continuity](santi-change-scope.md) — Add improvements incrementally without replacing the working SANTI Nexus baseline.
 - [Session query lifecycle](auth-session-query.md) — Preserve the active session observer while replacing auth state and clearing other users' cached data.
 - [Tactical layout verification](tactical-verification.md) — Check authenticated mobile reports; use isolated fixtures instead of repeating paid AI calls for layout retests.
+- [SANTI audit scope](santi-audit-scope.md) — Preserve originals even for directors and tests; RNID 2026/ICCS are statistical references, not universal legal certification.
+- [Infrastructure verification](santi-infrastructure-verification.md) — Check worker processes separately from proxied HTTP samples; keep internal compute workflows private.
+- [Portal ciudadano y privacidad](santi-citizen-privacy.md) — Evidencias reales privadas, límites por rol y conservación de archivos confirmados entre entornos.

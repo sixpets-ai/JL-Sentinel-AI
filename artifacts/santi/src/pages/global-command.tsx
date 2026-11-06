@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, Redirect } from "wouter";
+import { isRestricted, portalFor } from "@/lib/session";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetGlobalSession, getGetGlobalSessionQueryKey, useLogoutGlobalUser,
@@ -39,7 +40,7 @@ function Workspace({ user }: { user: GlobalUser }) {
   const [selectedBrief, setBrief] = useState<GlobalBrief | null>(null);
   const [auditAck, setAuditAck] = useState(false);
 
-  const canOperate = user.role === "oficial" || user.role === "director";
+  const canOperate = user.role === "analista" || user.role === "oficial" || user.role === "director";
   const isDirector = user.role === "director";
   const history = useListGlobalBriefs({ topic }, {
     query: { queryKey: getListGlobalBriefsQueryKey({ topic }), enabled: canOperate, refetchInterval: 60000 },
@@ -305,6 +306,7 @@ export default function GlobalCommand() {
   if (session.isLoading) {
     return <div className="gc-root grid place-items-center"><div className="w-64 space-y-3"><div className="gc-skel h-8" /><div className="gc-skel h-4" /><div className="gc-skel h-4 w-2/3" /></div></div>;
   }
+  if (session.data?.user && status !== 401 && isRestricted(session.data.user.role)) return <Redirect to={portalFor(session.data.user.role)} />;
   if (session.data?.user && status !== 401) return <Workspace key={session.data.user.id} user={session.data.user} />;
   if (session.isError && status !== 401) {
     return (

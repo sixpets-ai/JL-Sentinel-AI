@@ -7,7 +7,11 @@ import {
   useAnalyzeIncident,
   useCreateReport,
   useTranslateSantiUi,
+  useGetGlobalSession,
+  getGetGlobalSessionQueryKey,
 } from "@workspace/api-client-react";
+import { NexusSeal } from "@/components/ledger/seal-badge";
+import "@/styles/ledger.css";
 import { playNewReport, playAgentActivated } from "@/lib/audio";
 import {
   speakAsAgent, stopAgentSpeech,
@@ -34,6 +38,7 @@ const AGENTS = {
   maxi:     { name: "MAXIMILIANO", emoji: "🔎", color: "#9C27B0", role: "Asistente de IA · Demo", lang: "Español" },
   santiago: { name: "SANTIAGO",    emoji: "🏫", color: "#00897B", role: "Asistente de IA · Demo", lang: "Español" },
   katering: { name: "KATERING",    emoji: "🦋", color: "#E91E8C", role: "Asistente de IA · Demo", lang: "Español" },
+  lorena:   { name: "LORENA",      emoji: "L",  color: "#FF8A65", role: "Asistente de IA · Demo", lang: "Español" },
 } as const;
 type AgentId = keyof typeof AGENTS;
 
@@ -74,6 +79,7 @@ interface FolioEntry {
   folio: string; tipo: string; agente: AgentId;
   sector: string; horaEntrada: string;
   lat?: number; lng?: number;
+  dbId?: number;
 }
 interface ChatMsg { role: "user"|"agent"; text: string; }
 interface TraceEntry { time: string; event: string; }
@@ -217,6 +223,9 @@ function AgentChatModal({
 
 /* ─── MAIN COMPONENT ────────────────────────────────────────── */
 export default function SantiCommand() {
+  const sealSession = useGetGlobalSession({ query: { queryKey: getGetGlobalSessionQueryKey(), retry: false, refetchInterval: 60000 } });
+  const sealRole = sealSession.data?.user?.role;
+  const canViewSeal = !sealSession.isError && (sealRole === "analista" || sealRole === "oficial" || sealRole === "director");
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInst = useRef<L.Map|null>(null);
   const selectedLocationMarkerRef = useRef<L.CircleMarker|null>(null);
@@ -497,7 +506,7 @@ export default function SantiCommand() {
     setAiAnalysis(analysis);
 
     try {
-      await createReport.mutateAsync({data:{
+      const savedReport=await createReport.mutateAsync({data:{
         folio,
         tipo:rtype,
         descripcion,
@@ -507,7 +516,9 @@ export default function SantiCommand() {
         nivelRiesgo:"NO EVALUADO",
         analisis:analysis.analisis,
       }});
-      setFolioList(previous=>[entry,...previous].slice(0,30));
+      const savedEntry:FolioEntry=typeof savedReport?.id==="number"?{...entry,dbId:savedReport.id}:entry;
+      setFolioList(previous=>[savedEntry,...previous].slice(0,30));
+      setCurrentFolio(previous=>previous&&previous.folio===savedEntry.folio?savedEntry:previous);
       setStats(previous=>({...previous,reports:previous.reports+1}));
       setActivity(previous=>[{time:nowStr(),color:"#8AAAC8",msg:`${folio} · ${rtype} · guardado en demo; no verificado`},...previous].slice(0,20));
       setTraceLog(previous=>[...previous,{time:nowStr(),event:"Registro guardado en la base de datos de demostración"},{time:nowStr(),event:"Sin notificación, despacho ni enlace institucional"}]);
@@ -722,6 +733,7 @@ export default function SantiCommand() {
                       <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:"#2A4A6A",display:"flex",gap:8}}>
                         <span>{f.horaEntrada}</span><span>{f.sector}</span>
                       </div>
+                      {typeof f.dbId==="number"&&<div style={{marginTop:4}}><NexusSeal dbId={f.dbId} canView={canViewSeal}/></div>}
                     </div>
                   );
                 })}
@@ -818,6 +830,7 @@ export default function SantiCommand() {
                           <div style={{padding:"2px 8px",borderRadius:999,background:"rgba(200,168,75,.08)",border:"1px solid rgba(200,168,75,.2)",fontFamily:"'Orbitron',monospace",fontSize:9,fontWeight:700,color:"#C8A84B"}}>
                             DEMO · NO VERIFICADO
                           </div>
+                          {typeof currentFolio.dbId==="number"&&<NexusSeal dbId={currentFolio.dbId} canView={canViewSeal}/>}
                           <div style={{marginLeft:"auto",fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:`${AGENTS[currentFolio.agente].color}`,letterSpacing:.5}}>{AGENTS[currentFolio.agente].emoji} {AGENTS[currentFolio.agente].name}</div>
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:10}}>
