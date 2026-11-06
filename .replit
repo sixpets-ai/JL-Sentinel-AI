@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "python-base-3.13"]
 
 [deployment]
 router = "application"
@@ -30,3 +30,11 @@ externalPort = 80
 [[ports]]
 localPort = 23210
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+WATSONX_GOVERNANCE_URL = "https://api.aiopenscale.cloud.ibm.com"
+WATSONX_SERVICE_INSTANCE_ID = "3874bb6c-2101-4823-abff-34c6214c7290"
+WATSONX_MONITOR_INSTANCE_ID = "3874bb6c-2101-4823-abff-34c6214c7290"
+WATSONX_DATA_SET_ID = "3874bb6c-2101-4823-abff-34c6214c7290"

@@ -2,3 +2,5 @@
 - [SANTI Vite Fast Refresh](santi-vite-hmr.md) — Keep exported static demo data separate from React component modules to avoid HMR invalidation.
 - [SANTI React Query context](santi-query-context.md) — Deduplicate TanStack Query and provide it at the application root for generated API hooks.
 - [SANTI continuity](santi-change-scope.md) — Add improvements incrementally without replacing the working SANTI Nexus baseline.
+- [Session query lifecycle](auth-session-query.md) — Preserve the active session observer while replacing auth state and clearing other users' cached data.
+- [Tactical layout verification](tactical-verification.md) — Check authenticated mobile reports; use isolated fixtures instead of repeating paid AI calls for layout retests.
