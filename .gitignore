@@ -55,4 +55,6 @@ __pycache__/
 *.env.local
 logs/
 *.log
+*.BAK
+*.BACKUP*
 node_modules/
