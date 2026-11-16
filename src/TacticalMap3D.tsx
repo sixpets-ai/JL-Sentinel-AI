@@ -1,0 +1,14 @@
+// TacticalMap3D.tsx — SANTI NEXUS v4.1 (placeholder)
+import React from "react";
+
+export const TacticalMap3D: React.FC = () => (
+  <div style={{ width:"100%", height:"100%", background:"#0a0a0f", display:"flex", alignItems:"center", justifyContent:"center", color:"#444", fontFamily:"Courier New" }}>
+    <div style={{ textAlign:"center" }}>
+      <div style={{ fontSize:"64px" }}>🛰️</div>
+      <div style={{ color:"#00d4ff", marginTop:"12px" }}>Mapa Táctico 3D</div>
+      <div style={{ fontSize:"12px", marginTop:"4px" }}>MapLibre GL · ESRI World Imagery</div>
+    </div>
+  </div>
+);
+
+export default TacticalMap3D;

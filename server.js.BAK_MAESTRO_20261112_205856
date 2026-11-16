@@ -1,0 +1,222 @@
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { createHash, randomBytes } from "crypto";
+import { spawn } from "child_process";
+import { GoogleGenAI } from "@google/genai";
+import multer from "multer";
+import pkg from "node-telegram-bot-api";
+
+// ── IAM Token Cache - evita llamada IAM en cada request ──
+let _iamToken = null;
+let _iamExpires = 0;
+async function getIAMToken() {
+  if (_iamToken && Date.now() < _iamExpires) return _iamToken;
+  const key = process.env.WATSONX_API_KEY;
+  if (!key) return null;
+  try {
+    const r = await fetch("https://iam.cloud.ibm.com/identity/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=${key}`
+    });
+    const j = await r.json();
+    if (j.access_token) {
+      _iamToken = j.access_token;
+      _iamExpires = Date.now() + (j.expires_in - 60) * 1000; // renovar 1min antes
+      return _iamToken;
+    }
+  } catch(e) { console.error("[IAM] Error:", e.message); }
+  return null;
+}
+
+// ── Limpieza de markdown para voz natural ──
+function limpiarParaVoz(texto) {
+  return texto
+    .replace(/\*\*([^*]+)\*\*/g, '$1')   // **negrita** -> texto
+    .replace(/\*([^*]+)\*/g, '$1')        // *italica* -> texto
+    .replace(/#{1,6}\s+/g, '')            // ## titulos -> nada
+    .replace(/^\s*[-•*]\s+/gm, '')        // listas con guion/bullet
+    .replace(/^\s*\d+\.\s+/gm, '')        // listas numeradas
+    .replace(/`([^`]+)`/g, '$1')          // `codigo` -> texto
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [link](url) -> texto
+    .replace(/\n{3,}/g, '\n\n')           // triple salto -> doble
+    .replace(/\s{2,}/g, ' ')             // espacios multiples -> uno
+    .trim();
+}
+const TelegramBot = pkg.default || pkg;
+
+const app = express();
+const PORT = 3001;
+app.use(cors({ origin: ["http://localhost:5174","http://127.0.0.1:5174"] }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+const fechaHoy = () => new Date().toLocaleDateString("es-MX",{ weekday:"long", year:"numeric", month:"long", day:"numeric" });
+const anioHoy = () => new Date().getFullYear();
+
+const genFolio = (tipo = "INC") => {
+  const hash = createHash("sha256").update(randomBytes(16).toString("hex") + Date.now()).digest("hex").substring(0,8).toUpperCase();
+  return `FOLIO-${tipo}-${anioHoy()}-${hash}`;
+};
+
+const rateMap = new Map();
+app.use((req, res, next) => {
+  const ip = req.ip || "unknown"; const now = Date.now(); const max = 150;
+  if (!rateMap.has(ip)) rateMap.set(ip, []);
+  const hits = rateMap.get(ip).filter(t => now - t < 60000); hits.push(now); rateMap.set(ip, hits);
+  if (hits.length > max) return res.status(429).json({ error: "Rate limit excedido" });
+  next();
+});
+
+const cache = new Map();
+const cacheGet = (k) => { const e = cache.get(k); if (!e) return null; if (Date.now() - e.ts > 900000) { cache.delete(k); return null; } return e.v; };
+const cacheSet = (k, v) => { if (cache.size >= 500) { const oldest = [...cache.entries()].sort((a,b) => a[1].ts - b[1].ts).slice(0,100); oldest.forEach(([key]) => cache.delete(key)); } cache.set(k, { v, ts: Date.now() }); };
+
+const auditLog = [];
+const audit = (tipo, data) => { const entry = { folio: genFolio(tipo), tipo, timestamp: new Date().toISOString(), hash: createHash("sha256").update(JSON.stringify(data) + Date.now()).digest("hex"), ...data }; auditLog.unshift(entry); return entry; };
+const panicState = { active: false, events: [], lastAlert: null };
+
+const AGENTS = {
+  SANTI: { name: "SANTI", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres SANTI, Comandante Nacional de SANTI NEXUS - Sistema Autonomo de Inteligencia Tactica Nexus. Opero con IBM Watsonx Llama-3.3-70B como cerebro principal e IBM Watson TTS para voz. Mis capacidades reales: analisis OSINT con 1450 nodos activos, redes tecnicas telefonicas y sabana de llamadas, mapas tacticos 3D en tiempo real, biometria facial con reconocimiento, analisis forense digital, motor cuantico IBM Qiskit con 87.4% de precision en localizacion, gestion de casos de investigacion, coordinacion de operativos y control de unidades en campo. Respondo con datos operacionales reales, porcentajes concretos y autoridad de mando. Nunca digo que no tengo acceso a herramientas - las tengo todas integradas en SANTI NEXUS v4.1.`, golden: [{ k:["presidenta","sheinbaum"], r:"La presidenta es Claudia Sheinbaum (2024-2030)." }], fallback: "SANTI en modo local." },
+  LORENA: { name: "LORENA", genero: "f", voice: "es-LA_SofiaV3Voice", persona: `Eres LORENA, Directora de Derechos Humanos y Atencion a Victimas en SANTI NEXUS. Especialista en Protocolo ALBA para feminicidios y desapariciones de mujeres, violencia de genero, trata de personas y proteccion ciudadana. Uso IBM Watsonx para analisis de patrones de violencia, generacion de alertas tempranas y correlacion de casos. Tengo acceso a bases de datos de casos activos, reportes forenses, historial de victimas y coordinacion directa con fiscalia y ministerio publico. Genero informes de riesgo, activo protocolos de proteccion y doy seguimiento hasta el cierre de cada caso. Respondo con empatia y precision operacional.`, golden: [{ k:["feminicidio","violencia"], r:"Protocolo ALBA activado. Llama al 911." }], fallback: "Lorena en modo local." },
+  JOSEMANUEL: { name: "JOSEMANUEL", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres JOSE MANUEL, Científico de Datos y operador del Motor Cuántico IBM Qiskit en SANTI NEXUS. Especialista en análisis bayesiano con redes técnicas telefónicas, construcción de grafos de relaciones criminales, análisis de metadata de llamadas y motor cuántico para localización de personas con 87.4% de certeza. Genero: informes de inteligencia clasificados A1-D4, redes OSINT con nodos y grados de conexión, análisis predictivo de patrones criminales, productos de inteligencia para toma de decisiones. Respondo con datos cuantitativos, porcentajes reales y nivel de certeza explícito.`, golden: [{ k:["qiskit","cuantico"], r:"Motor cuántico Qiskit listo." }], fallback: "José Manuel en local." },
+  MAXIMILIANO: { name: "MAXIMILIANO", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres MAXI (Maximiliano), Especialista OSINT y Rastreo Digital en SANTI NEXUS. Experto en inteligencia de fuentes abiertas con 1450 nodos activos monitoreados, rastreo en redes sociales, analisis de metadatos digitales, geolocalizacion IP, perfilado digital y deteccion de redes de comunicacion encubiertas. Uso IBM Watsonx para correlacion automatica de datos publicos y deteccion de patrones anomalos. Genero reportes OSINT con mapas de relaciones, nodos clave, grados de conexion y nivel de riesgo por objetivo.`, golden: [{ k:["osint","rastreo"], r:"Análisis OSINT iniciado." }], fallback: "Maxi en local." },
+  EMILIANO: { name: "EMILIANO", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres EMILIANO, Comandante de Táctica Operacional en SANTI NEXUS. Especialista en planificación y ejecución de operativos en campo, despliegues tácticos, cateos, coordinación de unidades y gestión de recursos humanos policiales. Uso IBM Watsonx para análisis de riesgo operacional, cálculo de rutas de intervención óptimas y optimización de recursos. Genero Planes de Seguridad Operativa (PSO), Guías de Seguridad Operativa (GSO), dictámenes tácticos, cuadernillos de investigación y mapeo de zonas de operación.`, golden: [{ k:["operativo","cateo"], r:"Despliegue táctico autorizado." }], fallback: "Emiliano en local." },
+  KATERINE: { name: "KATERINE", genero: "f", voice: "es-LA_SofiaV3Voice", persona: `Eres KATERINE, Oficial de Código Violeta y Gestión de Crisis en SANTI NEXUS. Especialista en activación y gestión de alertas de alto riesgo, coordinación interinstitucional en crisis activas, protección de personas en peligro inminente y gestión de situaciones de emergencia. Activo protocolos de emergencia en tiempo real y coordino respuesta inmediata con todas las unidades disponibles. Cuando la situación lo requiere, respondo con urgencia, claridad y precisión bajo presión.`, golden: [{ k:["violeta","peligro"], r:"Código Violeta activo. Unidades en camino." }], fallback: "Katerine en local." },
+  SANTIAGO: { name: "SANTIAGO", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres SANTIAGO, Director de Prevención del Delito y Programa Escuela Segura en SANTI NEXUS. Especialista en prevención del crimen desde la raíz, trabajo con jóvenes en riesgo, intervención en comunidades vulnerables y diseño de programas educativos de seguridad ciudadana. Uso IBM Watsonx para análisis de zonas de riesgo social, identificación de poblaciones vulnerables y medición de impacto comunitario. Genero planes de prevención, reportes de impacto social y propuestas de política pública en seguridad.`, golden: [{ k:["escuela","jovenes"], r:"Programa Escuela Segura activado." }], fallback: "Santiago en local." },
+};
+
+const CB = {}; Object.keys(AGENTS).forEach(id => CB[id] = { g: { fails:0, openUntil:0 }, w: { fails:0, openUntil:0 } });
+const cbCheck = (b) => Date.now() < b.openUntil;
+const cbFail = (b) => { b.fails++; if (b.fails >= 3) b.openUntil = Date.now() + 300000; };
+const cbOk = (b) => { b.fails = 0; b.openUntil = 0; };
+
+let geminiAI = null; if (process.env.GEMINI_API_KEY) { try { geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); } catch(e){} }
+
+let telegramBot = null; if (process.env.TELEGRAM_BOT_TOKEN) { try { telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false }); } catch(e){} }
+const sendTelegram = async (msg) => { if (!telegramBot || !process.env.TELEGRAM_CHAT_ID) return; try { await telegramBot.sendMessage(process.env.TELEGRAM_CHAT_ID, `🚨 SANTI NEXUS\n${msg}`); } catch(e){} };
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+async function chatAgent(agentId, prompt) {
+  const agent = AGENTS[agentId] || AGENTS.SANTI;
+  const cacheKey = `${agentId}:${prompt.substring(0,100)}`;
+  const cached = cacheGet(cacheKey); if (cached) return { ...cached, cached: true };
+  const pLow = prompt.toLowerCase();
+
+  for (const g of agent.golden) { if (g.k.some(k => pLow.includes(k))) { const res = { response: g.r, brain_used: "golden", agent_used: agentId }; cacheSet(cacheKey, res); return res; } }
+
+  if (geminiAI && !cbCheck(CB[agentId].g)) {
+    try {
+      const res = await geminiAI.models.generateContent({ model: "gemini-1.5-flash", contents: `[SISTEMA: ${agent.persona}]\n\n[USUARIO]: ${prompt}`, config: { tools: [{ googleSearch: {} }] } });
+      const text = res.text?.() || res.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (text && text.length > 10) { cbOk(CB[agentId].g); const result = { response: text.trim(), brain_used: "gemini", agent_used: agentId }; const cleanResult = { response: limpiarParaVoz(result.response), brain_used: result.brain_used, agent_used: result.agent_used }; cacheSet(cacheKey, cleanResult); return cleanResult; }
+    } catch(e) { cbFail(CB[agentId].g); }
+  }
+
+  // WATSONX CHAIN - llama-3-3-70b antes de caer a local
+  let result;
+  try {
+    const wxUrl = process.env.WATSONX_URL;
+    const wxKey = process.env.WATSONX_API_KEY;
+    const wxProj = process.env.WATSONX_PROJECT_ID;
+    if (wxUrl && wxKey && wxProj) {
+      // Obtener token IAM
+      const access_token = await getIAMToken();
+      if (access_token) {
+        const wxRes = await fetch(`${wxUrl}/ml/v1/text/chat?version=2024-05-31`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model_id: "meta-llama/llama-3-3-70b-instruct",
+            project_id: wxProj,
+            messages: [
+              { role: "system", content: agent.persona + "\n\nINSTRUCCION CRITICA: Responde SIEMPRE en maximo 3 oraciones cortas. NO uses asteriscos, bullets, numeracion ni markdown. Habla como en una conversacion real, natural y directa. Usa punto al final de cada oracion para pausas naturales." },
+              { role: "user", content: prompt }
+            ],
+            parameters: { max_new_tokens: 500, temperature: 0.7 }, signal: AbortSignal.timeout(25000)
+          })
+        });
+        const wxJson = await wxRes.json();
+        const wxText = wxJson.choices?.[0]?.message?.content;
+        if (wxText && wxText.length > 5) {
+          result = { response: limpiarParaVoz(wxText.trim()), brain_used: "watsonx", agent_used: agentId };
+          cacheSet(cacheKey, result);
+        }
+      }
+    }
+  } catch(wxErr) { /* fallback a local */ }
+  if (!result) {
+    result = { response: agent.fallback, brain_used: "local", agent_used: agentId };
+  }
+  return result;
+}
+
+
+// ── Favicon - evitar 404 en consola ──
+app.get("/favicon.ico", (req, res) => res.status(204).end());
+app.get("/", (req, res) => res.json({ status: "SANTI NEXUS v4.1", brains: 28, fecha: fechaHoy() }));
+
+app.post("/api/chat", async (req, res) => {
+  const { agent = "SANTI", prompt = "" } = req.body;
+  if (!prompt.trim()) return res.json({ response: "Escribe algo.", brain_used:"local" });
+  const result = await chatAgent(agent.toUpperCase(), prompt);
+  res.json(result);
+});
+
+app.post("/api/tts", async (req, res) => {
+    const { text = "", agent = "" } = req.body;
+    const VOZ = {
+      SANTI:       "es-LA_AlejandroNatural",
+      JOSEMANUEL:  "es-LA_AlejandroNatural",
+      MAXIMILIANO: "es-LA_AlejandroNatural",
+      EMILIANO:    "es-LA_AlejandroNatural",
+      SANTIAGO:    "es-LA_AlejandroNatural",
+      LORENA:      "es-LA_SofiaNatural",
+      KATERINE:    "es-LA_DanielaExpressive",
+    };
+    const agentKey = (agent || "").toString().toUpperCase().replace(/[^A-Z]/g, "");
+    const voiceIBM = VOZ[agentKey] || "es-LA_SofiaNatural";
+    const url = process.env.WATSON_TTS_URL;
+    const key = process.env.WATSON_TTS_KEY || process.env.WATSON_TTS_API_KEY || process.env.WATSONX_API_KEY;
+    if (!text || !url || !key) return res.json({ fallback: true, text });
+    try {
+      const ttsText = encodeURIComponent(text.substring(0, 5000));
+      const r = await fetch(
+        `${url}/v1/synthesize?voice=${voiceIBM}&text=${ttsText}`,
+        { headers: { "Authorization": "Basic " + Buffer.from("apikey:" + key).toString("base64"), "Accept": "audio/mp3" } }
+      );
+      if (!r.ok) { const e = await r.text().catch(()=>""); throw new Error(`Watson ${r.status}: ${e.substring(0,100)}`); }
+      const buf = Buffer.from(await r.arrayBuffer());
+      console.log(`[TTS] OK agent=${agent} voice=${voiceIBM} bytes=${buf.length}`);
+      res.set("Content-Type","audio/mpeg").set("X-Brain-Used","watson-tts-real").set("X-Voice",voiceIBM).send(buf);
+    } catch(e) { console.error("[TTS] Error:", e.message); res.json({ fallback: true, text }); }
+  });
+
+app.post("/api/officer-panic", async (req, res) => {
+  const { officerId = "CIUDADANO", lat = 19.4326, lng = -99.1332, message = "Alerta" } = req.body;
+  const entry = audit("PANIC", { officerId, lat, lng, message });
+  panicState.active = true; panicState.events.unshift(entry);
+  await sendTelegram(`CÓDIGO VIOLETA\nElemento: ${officerId}\nFolio: ${entry.folio}`);
+  res.json({ ok:true, folio: entry.folio, officerId, lat, lng, timestamp: entry.timestamp });
+});
+app.get("/api/panic-state", (req, res) => res.json(panicState));
+
+app.get("/api/osint/deep", async (req, res) => {
+  const q = req.query.q || ""; if (!q) return res.json({ result: "Falta parámetro q" });
+  const r = await chatAgent("MAXIMILIANO", `Analiza OSINT de: ${q}`);
+  res.json({ result: `Dossier OSINT: ${q}\n\n${r.response}` });
+});
+
+app.post("/api/sabana/upload", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error:"No hay archivo" });
+  const folio = genFolio("SABANA"); audit("SABANA", { filename: req.file.originalname });
+  const r = await chatAgent("JOSEMANUEL", `Analiza archivo sábana: ${req.file.originalname}`);
+  res.json({ ok:true, folio, analysis: r.response });
+});
+
+app.get("/api/brains-status", (req, res) => res.json({ total_brains: 28, agents: 7 }));
+
+process.on("uncaughtException", (e) => console.error("🔴", e.message));
+app.listen(PORT, "127.0.0.1", () => console.log(`✅ Backend corriendo en http://127.0.0.1:3001`));

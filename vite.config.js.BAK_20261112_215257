@@ -1,0 +1,24 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  // 🔥 ESCUDO PARA MAPBOX: Evita que Vite colapse al leer el paquete
+  optimizeDeps: {
+    exclude: ['react-map-gl'],
+    include: ['react-map-gl/mapbox']
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 5174,
+    strictPort: false,   // fall back to 5175, 5176… if 5174 is busy
+    allowedHosts: true,
+    // 🔥 PROXY INTACTO: Todo lo que vaya a /api se envía al backend Node (3001)
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
+});

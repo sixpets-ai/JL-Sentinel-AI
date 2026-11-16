@@ -1,0 +1,1 @@
+const fs=require("fs");const f="C:/Users/Wyse/Desktop/J-L-Sentinel-AI/05_Respaldo_Codigo/Intelligent-Patrols/SabanaAnalyzer.tsx";const lines=fs.readFileSync(f,"utf8").split("\n");for(let i=280;i<310;i++){console.log((i+1)+":",lines[i]);}

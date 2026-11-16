@@ -1,0 +1,41 @@
+
+"Agente, vamos a implementar el sistema de Onboarding, Roles y Transparencia Ciudadana para SANTI NEXUS. Este es un sistema de seguridad de nivel federal. No rompas el código actual. Implementa lo siguiente de forma modular:
+
+1. Onboarding y Registro Biométrico (Enfoque Psicológico y Legal):
+
+Crea una pantalla de bienvenida (Login/Registro) con los Términos, Políticas de Privacidad y Aviso Legal.
+
+Implementa un botón de "Aceptar y Registrar". Al hacerlo, activa la cámara web (usando react-webcam o similar) para capturar el rostro. (Para el MVP, guarda la imagen en Base64 o simula la verificación biométrica).
+
+Añade un mensaje con ingeniería social positiva: "Tus datos biométricos están encriptados. Este registro se usa únicamente para garantizar tu identidad, evitar suplantaciones y proteger tus derechos humanos. No serán compartidos con terceros sin tu consentimiento".
+
+2. Voces de los Agentes (Web Speech API):
+
+En el componente del chat, configura la API SpeechSynthesis de JavaScript.
+
+Asigna una voz diferente (y un género distinto si es posible en el navegador) a cada uno de los 6 agentes. Ejemplo: Agente 1 (Femenina, tono calmado), Agente 2 (Masculina, tono grave/autoritario), etc., para que se sienta como un equipo real.
+
+3. Control de Acceso Basado en Roles (RBAC):
+
+Modifica el registro para pedir: Rol (Ciudadano, Patrulla, Analista, Director), Matrícula, Corporación. Si es ciudadano, no pide matrícula.
+
+Usando JWT o el estado global de React, crea interfaces diferentes:
+
+Patrulla: Solo ve el mapa, su unidad asignada y las alertas de emergencia cercanas. NO tiene acceso a bases de datos, sábanas telefónicas ni análisis de redes.*
+
+Analista/Director: Ve todo (geos, mapeos, nombres, domicilios, trazabilidad, análisis de redes).*
+
+Ciudadano: Interfaz minimalista. Solo ve su alerta, el estatus de su reporte y el mapa con la patrulla asignada.*
+
+4. Rastreo Ciudadano en Tiempo Real (Los 100 metros):
+
+En el lado del ciudadano, cuando su reporte está activo, muestra el mapa con la unidad asignada.
+
+Usa la fórmula de Haversine o Turf.js para calcular la distancia entre la patrulla y el ciudadano. Si la distancia es menor a 100 metros, dispara una notificación visual y por voz (usando la API de voz): "Su unidad está a 100 metros. El elemento a cargo es [Nombre del oficial]. Por favor, manténgase en un lugar seguro".
+
+5. Evidencia Ciudadana (Anti-Corrupción y Anti-Nepotismo):
+
+Añade un módulo de "Carga de Evidencia" en la interfaz del ciudadano. Debe permitir subir fotos, videos o audio (usando un input file normal o simulando la carga) para blindar el actuar de la autoridad y evitar abusos de poder, intimidación o alteración de los hechos.
+
+¡Prioriza la seguridad en el backend con middleware que valide los roles antes de entregar cualquier dato sensible!"
+

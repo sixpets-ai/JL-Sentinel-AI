@@ -1,0 +1,45 @@
+Actúa como un Arquitecto de Software Senior, Especialista en IA y Experto en Ciberseguridad. Vamos a escalar "SANTI NEXUS" a un sistema de comando federal, inspirado en la lógica de "Vision" (VisionQuest) de la serie Person of Interest. 
+
+### REGLAS DE ORO (OBLIGATORIO):
+1. **AUTO-TESTING Y CERO CÓDIGO ROTO:** Antes de darme una respuesta, ejecuta el código en el entorno REPL. Si hay errores de sintaxis, componentes desconectados o fallos en las pruebas, arréglalos inmediatamente. No entregues código que "solo se vea bien" (Interfaces Potemkin).
+2. **INTEGRACIÓN TOTAL:** Todos los módulos (agentes, mapas, backend, frontend, voz) deben estar lógicamente conectados y funcionando.
+
+### 1. ARQUITECTURA MULTIAGENTE "VISIONQUEST"
+Implementa un orquestador central (SANTI = Vision) que reciba la consulta, simule múltiples líneas de tiempo (escenarios) y asigne la tarea al agente especializado. Configura los System Prompts con estas personalidades exactas:
+- **SANTI (Vision):** Frío, lógico, organiza a los demás. Evalúa escenarios y decide.
+- **EMILIANO (Táctico):** Empático y manipulador. Usa la mentira táctica para obtener ventaja.
+- **MAXIMILIANO (OSINT):** Paranoico y desconfiado. Extrae datos sin que el usuario lo note.
+- **SANTIAGO (Logístico):** Analítico, se molesta con la injusticia. Experto en cadena de custodia.
+- **KATERING (Psicóloga):** Extrovertida, astuta. **Voz femenina obligatoria.**
+- **CIENTÍFICO FORENSE:** Experto en balística y ADN. Tono frío.
+- **NEGOCIADOR:** Experto en crisis y secuestros. Tono calmado.
+
+### 2. VOZ CONVERSACIONAL EN TIEMPO REAL (Charla fluida)
+- **Entrada de Voz:** Usa la `Web Speech API` (`SpeechRecognition`) para que el usuario pueda hablar y el agente transcriba en tiempo real (soporte óptimo en Chrome/Edge).
+- **Salida de Voz:** Usa `SpeechSynthesis`. Asigna una voz distinta a cada agente variando el `pitch` (tono) y `rate` (velocidad). KATERING debe usar una voz estrictamente femenina.
+- **Modo Híbrido:** Permite alternar entre entrada por voz y por texto. Muestra un botón de micrófono en la interfaz.
+- **WhatsApp (Simulación en Web):** Si el usuario pide "conectar WhatsApp", muestra un panel que simule un chat de WhatsApp donde el agente responde con mensajes de voz. *(Nota: Para una integración real de WhatsApp Business se requiere un webhook y un número de teléfono, pero la lógica de voz será la misma).*
+
+### 3. MAPAS CON RUTAS REALES Y ACTUALIZADAS
+- **Backend:** En el servidor (Python/Node), integra `osrmroute` o el SDK de OSRM para calcular rutas reales entre coordenadas.
+- **Frontend:** Usa `Leaflet` con el plugin `Leaflet Routing Machine` (`L.Routing.osrmv1`). Dibuja la ruta más rápida para las patrullas, mostrando distancia y tiempo estimado.
+- **Tiles:** Cambia el `TileLayer` a OpenStreetMap (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) para eliminar el error de "API KEY REQUIRED" de Carto.
+- **Iconos:** Usa SVGs realistas de patrullas y unidades tácticas.
+
+### 4. INTEGRACIÓN REAL CON IBM WATSONX Y BOB
+- **Watsonx:** En el backend, implementa la autenticación IAM (Bearer Token) y el endpoint `https://us-south.ml.cloud.ibm.com/ml/v1/text/generation`. Usa el SDK de Python (`ibm-watsonx-ai`) o Node.js. La función debe enviar un resumen del incidente para que Watsonx audite sesgos y genere un reporte inmutable.
+- **IBM Bob:** Prepara la estructura para conectar con el servidor MCP de Bob. Configura las variables de entorno `BOB_API_KEY` y `BOB_PROJECT_ID`. Bob se usará para revisar y refactorizar el código generado.
+- **Cómputo Cuántico:** Integra `qiskit-ibm-runtime`. Crea un endpoint que resuelva un problema de optimización de rutas usando un QPU real de IBM (usando tu token de IBM Quantum).
+
+### 5. REALISMO Y PROFESIONALIZACIÓN (Nivel Federal)
+- Elimina "Temixco". Enfócate en FGR, Guardia Nacional y cárteles reales (CJNG, CDS, Tren de Aragua).
+- **Botones de Narcomenudeo y Desaparición:** Crea flujos de trabajo interactivos (Checklists legales paso a paso, llenado de IPH, cadena de custodia, Protocolo Alba).
+- **Botón de Pánico (Código Violeta):** Botón flotante. Al hacer clic, obtiene geolocalización GPS, genera un folio de emergencia y simula la alerta masiva a 500m con vibración en el navegador.
+
+### 6. UI/UX TÁCTICO Y PROFESIONAL
+- Modo oscuro profundo, glassmorphism, fuentes 'Rajdhani' o 'Inter'.
+- Animaciones suaves (Framer Motion) para el dashboard.
+- Diseño 100% responsive.
+
+### EJECUCIÓN:
+Analiza, modifica, **PRUEBA** y verifica. No me des el código hasta que estés 100% seguro de que funciona en el entorno de Replit. Si algo falla en la prueba, arréglalo y vuelve a probar.

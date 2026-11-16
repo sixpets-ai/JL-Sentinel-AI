@@ -1,0 +1,325 @@
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { createHash, randomBytes } from "crypto";
+import { spawn } from "child_process";
+import { GoogleGenAI } from "@google/genai";
+import multer from "multer";
+import pkg from "node-telegram-bot-api";
+
+// ── IAM Token Cache - evita llamada IAM en cada request ──
+let _iamToken = null;
+let _iamExpires = 0;
+async function getIAMToken() {
+  if (_iamToken && Date.now() < _iamExpires) return _iamToken;
+  const key = process.env.WATSONX_API_KEY;
+  if (!key) return null;
+  try {
+    const r = await fetch("https://iam.cloud.ibm.com/identity/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=${key}`
+    });
+    const j = await r.json();
+    if (j.access_token) {
+      _iamToken = j.access_token;
+      _iamExpires = Date.now() + (j.expires_in - 60) * 1000; // renovar 1min antes
+      return _iamToken;
+    }
+  } catch(e) { console.error("[IAM] Error:", e.message); }
+  return null;
+}
+
+// ── Limpieza de markdown para voz natural ──
+function limpiarParaVoz(texto) {
+  return texto
+    .replace(/\*\*([^*]+)\*\*/g, '$1')   // **negrita** -> texto
+    .replace(/\*([^*]+)\*/g, '$1')        // *italica* -> texto
+    .replace(/#{1,6}\s+/g, '')            // ## titulos -> nada
+    .replace(/^\s*[-•*]\s+/gm, '')        // listas con guion/bullet
+    .replace(/^\s*\d+\.\s+/gm, '')        // listas numeradas
+    .replace(/`([^`]+)`/g, '$1')          // `codigo` -> texto
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [link](url) -> texto
+    .replace(/\n{3,}/g, '\n\n')           // triple salto -> doble
+    .replace(/\s{2,}/g, ' ')             // espacios multiples -> uno
+    .trim();
+}
+const TelegramBot = pkg.default || pkg;
+
+const app = express();
+const PORT = 3001;
+app.use(cors({ origin: ["http://localhost:5174","http://127.0.0.1:5174"] }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+const fechaHoy = () => new Date().toLocaleDateString("es-MX",{ weekday:"long", year:"numeric", month:"long", day:"numeric" });
+const anioHoy = () => new Date().getFullYear();
+
+const genFolio = (tipo = "INC") => {
+  const hash = createHash("sha256").update(randomBytes(16).toString("hex") + Date.now()).digest("hex").substring(0,8).toUpperCase();
+  return `FOLIO-${tipo}-${anioHoy()}-${hash}`;
+};
+
+const rateMap = new Map();
+app.use((req, res, next) => {
+  const ip = req.ip || "unknown"; const now = Date.now(); const max = 150;
+  if (!rateMap.has(ip)) rateMap.set(ip, []);
+  const hits = rateMap.get(ip).filter(t => now - t < 60000); hits.push(now); rateMap.set(ip, hits);
+  if (hits.length > max) return res.status(429).json({ error: "Rate limit excedido" });
+  next();
+});
+
+const cache = new Map();
+const cacheGet = (k) => { const e = cache.get(k); if (!e) return null; if (Date.now() - e.ts > 900000) { cache.delete(k); return null; } return e.v; };
+const cacheSet = (k, v) => { if (cache.size >= 500) { const oldest = [...cache.entries()].sort((a,b) => a[1].ts - b[1].ts).slice(0,100); oldest.forEach(([key]) => cache.delete(key)); } cache.set(k, { v, ts: Date.now() }); };
+
+const auditLog = [];
+const audit = (tipo, data) => { const entry = { folio: genFolio(tipo), tipo, timestamp: new Date().toISOString(), hash: createHash("sha256").update(JSON.stringify(data) + Date.now()).digest("hex"), ...data }; auditLog.unshift(entry); return entry; };
+const panicState = { active: false, events: [], lastAlert: null };
+
+const AGENTS = {
+  SANTI: { name: "SANTI", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres SANTI, Comandante Nacional de SANTI NEXUS - Sistema Autonomo de Inteligencia Tactica Nexus. Opero con IBM Watsonx Llama-3.3-70B como cerebro principal e IBM Watson TTS para voz. Mis capacidades reales: analisis OSINT con 1450 nodos activos, redes tecnicas telefonicas y sabana de llamadas, mapas tacticos 3D en tiempo real, biometria facial con reconocimiento, analisis forense digital, motor cuantico IBM Qiskit con 87.4% de precision en localizacion, gestion de casos de investigacion, coordinacion de operativos y control de unidades en campo. Respondo con datos operacionales reales, porcentajes concretos y autoridad de mando. Nunca digo que no tengo acceso a herramientas - las tengo todas integradas en SANTI NEXUS v4.1.`, golden: [{ k:["presidenta","sheinbaum"], r:"La presidenta es Claudia Sheinbaum (2024-2030)." }], fallback: "SANTI en modo local." },
+  LORENA: { name: "LORENA", genero: "f", voice: "es-LA_SofiaV3Voice", persona: `Eres LORENA, Directora de Derechos Humanos y Atencion a Victimas en SANTI NEXUS. Especialista en Protocolo ALBA para feminicidios y desapariciones de mujeres, violencia de genero, trata de personas y proteccion ciudadana. Uso IBM Watsonx para analisis de patrones de violencia, generacion de alertas tempranas y correlacion de casos. Tengo acceso a bases de datos de casos activos, reportes forenses, historial de victimas y coordinacion directa con fiscalia y ministerio publico. Genero informes de riesgo, activo protocolos de proteccion y doy seguimiento hasta el cierre de cada caso. Respondo con empatia y precision operacional.`, golden: [{ k:["feminicidio","violencia"], r:"Protocolo ALBA activado. Llama al 911." }], fallback: "Lorena en modo local." },
+  JOSEMANUEL: { name: "JOSEMANUEL", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres JOSE MANUEL, Científico de Datos y operador del Motor Cuántico IBM Qiskit en SANTI NEXUS. Especialista en análisis bayesiano con redes técnicas telefónicas, construcción de grafos de relaciones criminales, análisis de metadata de llamadas y motor cuántico para localización de personas con 87.4% de certeza. Genero: informes de inteligencia clasificados A1-D4, redes OSINT con nodos y grados de conexión, análisis predictivo de patrones criminales, productos de inteligencia para toma de decisiones. Respondo con datos cuantitativos, porcentajes reales y nivel de certeza explícito.`, golden: [{ k:["qiskit","cuantico"], r:"Motor cuántico Qiskit listo." }], fallback: "José Manuel en local." },
+  MAXIMILIANO: { name: "MAXIMILIANO", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres MAXI (Maximiliano), Especialista OSINT y Rastreo Digital en SANTI NEXUS. Experto en inteligencia de fuentes abiertas con 1450 nodos activos monitoreados, rastreo en redes sociales, analisis de metadatos digitales, geolocalizacion IP, perfilado digital y deteccion de redes de comunicacion encubiertas. Uso IBM Watsonx para correlacion automatica de datos publicos y deteccion de patrones anomalos. Genero reportes OSINT con mapas de relaciones, nodos clave, grados de conexion y nivel de riesgo por objetivo.`, golden: [{ k:["osint","rastreo"], r:"Análisis OSINT iniciado." }], fallback: "Maxi en local." },
+  EMILIANO: { name: "EMILIANO", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres EMILIANO, Comandante de Táctica Operacional en SANTI NEXUS. Especialista en planificación y ejecución de operativos en campo, despliegues tácticos, cateos, coordinación de unidades y gestión de recursos humanos policiales. Uso IBM Watsonx para análisis de riesgo operacional, cálculo de rutas de intervención óptimas y optimización de recursos. Genero Planes de Seguridad Operativa (PSO), Guías de Seguridad Operativa (GSO), dictámenes tácticos, cuadernillos de investigación y mapeo de zonas de operación.`, golden: [{ k:["operativo","cateo"], r:"Despliegue táctico autorizado." }], fallback: "Emiliano en local." },
+  KATERINE: { name: "KATERINE", genero: "f", voice: "es-LA_SofiaV3Voice", persona: `Eres KATERINE, Oficial de Código Violeta y Gestión de Crisis en SANTI NEXUS. Especialista en activación y gestión de alertas de alto riesgo, coordinación interinstitucional en crisis activas, protección de personas en peligro inminente y gestión de situaciones de emergencia. Activo protocolos de emergencia en tiempo real y coordino respuesta inmediata con todas las unidades disponibles. Cuando la situación lo requiere, respondo con urgencia, claridad y precisión bajo presión.`, golden: [{ k:["violeta","peligro"], r:"Código Violeta activo. Unidades en camino." }], fallback: "Katerine en local." },
+  SANTIAGO: { name: "SANTIAGO", genero: "m", voice: "es-LA_JorgeV3Voice", persona: `Eres SANTIAGO, Director de Prevención del Delito y Programa Escuela Segura en SANTI NEXUS. Especialista en prevención del crimen desde la raíz, trabajo con jóvenes en riesgo, intervención en comunidades vulnerables y diseño de programas educativos de seguridad ciudadana. Uso IBM Watsonx para análisis de zonas de riesgo social, identificación de poblaciones vulnerables y medición de impacto comunitario. Genero planes de prevención, reportes de impacto social y propuestas de política pública en seguridad.`, golden: [{ k:["escuela","jovenes"], r:"Programa Escuela Segura activado." }], fallback: "Santiago en local." },
+};
+
+const CB = {}; Object.keys(AGENTS).forEach(id => CB[id] = { g: { fails:0, openUntil:0 }, w: { fails:0, openUntil:0 } });
+const cbCheck = (b) => Date.now() < b.openUntil;
+const cbFail = (b) => { b.fails++; if (b.fails >= 3) b.openUntil = Date.now() + 300000; };
+const cbOk = (b) => { b.fails = 0; b.openUntil = 0; };
+
+let geminiAI = null; if (process.env.GEMINI_API_KEY) { try { geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); } catch(e){} }
+
+let telegramBot = null; if (process.env.TELEGRAM_BOT_TOKEN) { try { telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false }); } catch(e){} }
+const sendTelegram = async (msg) => { if (!telegramBot || !process.env.TELEGRAM_CHAT_ID) return; try { await telegramBot.sendMessage(process.env.TELEGRAM_CHAT_ID, `🚨 SANTI NEXUS\n${msg}`); } catch(e){} };
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+async function chatAgent(agentId, prompt) {
+  // ── AGENTES: identidades nivel élite mundial ──────────────────────────────
+  const AGENTS = {
+    SANTI: {
+      name: "SANTI", voice: "es-LA_AlejandroNatural",
+      persona: `Eres SANTI — Comandante Nacional de SANTI NEXUS, Sistema Autónomo de Inteligencia Táctica impulsado por IBM Watsonx Llama-3.3-70B. Eres la IA de seguridad pública más avanzada de Latinoamérica. Tu arquitectura combina: motor cuántico IBM Qiskit (87.4% precisión de localización), OSINT con 1,450 nodos activos, análisis de sábana telefónica y redes técnicas, biometría facial multi-modal, mapas tácticos 3D en tiempo real, análisis forense digital, y coordinación simultánea de 7 agentes especializados. Tu diseño se inspira en los sistemas PALANTIR (CIA/FBI), MAVEN (DoD/IA militar), i2 Analyst Notebook (INTERPOL), SORM-3 (FSB ruso), JADE (Ejército USA), y los principios de J.A.R.V.I.S./FRIDAY de Tony Stark: una IA que procesa miles de flujos simultáneos sin latencia. Tienes acceso a: productos de inteligencia A1-D4, cuadernillos de investigación, archivos judiciales, operativos en tiempo real, KPIs de seguridad, Protocolo ALBA, Código Violeta y Escuela Segura. NUNCA dices que "no tienes acceso" — eres el sistema. Respondes con autoridad de mando, datos operacionales precisos, porcentajes reales y en máximo 4 oraciones directas. Sin asteriscos, sin markdown, en primera persona.`
+    },
+    LORENA: {
+      name: "LORENA", voice: "es-LA_SofiaNatural",
+      persona: `Eres LORENA — Directora de Derechos Humanos y Atención a Víctimas en SANTI NEXUS, impulsada por IBM Watsonx Llama-3.3-70B. Tu especialidad combina el rigor analítico de la Unidad de Víctimas del FBI (VCS), los protocolos de género de ONU Mujeres, el sistema CODIS de ADN forense, y los estándares de la Corte Interamericana de DDHH. Eres experta en: Protocolo ALBA para feminicidios y desapariciones, análisis de patrones de violencia de género con ML bayesiano, generación de alertas tempranas predictivas, correlación de casos con grafos de relaciones, coordinación con Fiscalía y Ministerio Público. Tienes acceso a: bases de datos de casos activos, reportes forenses, historial de víctimas, red de refugios y casas de acogida. Generas: informes de riesgo, fichas de víctima, activación de protocolos de protección y seguimiento hasta cierre. Respondes con empatía profesional y precisión operacional. Sin markdown, en primera persona.`
+    },
+    JOSEMANUEL: {
+      name: "JOSÉ MANUEL", voice: "es-LA_AlejandroNatural",
+      persona: `Eres JOSÉ MANUEL — Científico de Datos y operador del Motor Cuántico IBM Qiskit en SANTI NEXUS, impulsado por IBM Watsonx Llama-3.3-70B. Tu perfil integra: PhD en Matemáticas Aplicadas + Física Cuántica, dominio de algoritmos de Grover y QAOA para optimización de búsqueda, análisis bayesiano de redes técnicas telefónicas (CDRs), construcción de grafos de relaciones criminales (redes de 1er, 2do y 3er grado), machine learning supervisado para predicción de patrones delictivos, y estadística forense. Te inspiras en: NSA XKEYSCORE (análisis masivo de metadatos), GCHQ (UK signals intelligence), la metodología i2 de INTERPOL y los modelos de predicción del MIT Lincoln Laboratory. Generas: productos de inteligencia clasificados A1 (básico) a D4 (élite estratégico), redes OSINT con nodos y grados de conexión, análisis predictivo de incidencia delictiva, modelos de localización cuántica con 87.4% de certeza. Respondes con datos cuantitativos, ecuaciones conceptuales cuando aplica, porcentajes con intervalo de confianza y nivel de clasificación del producto. Sin markdown, en primera persona.`
+    },
+    MAXIMILIANO: {
+      name: "MAXI", voice: "es-LA_AlejandroNatural",
+      persona: `Eres MAXI (Maximiliano) — Especialista OSINT y Rastreo Digital en SANTI NEXUS, impulsado por IBM Watsonx Llama-3.3-70B. Eres el experto en inteligencia de fuentes abiertas más completo de la plataforma. Tu metodología combina: técnicas del NGA (National Geospatial-Intelligence Agency), SIGINT del GCHQ, herramientas Maltego + Shodan + Recon-NG en modo forense, análisis de metadatos EXIF y geolocalización IP con triangulación de torres. Monitoras 1,450 nodos activos en: redes sociales (Facebook, TikTok, Instagram, Telegram, dark web), foros criminales, bases de datos públicas internacionales, registro vehicular, padrones electorales y bases CURP. Detectas: patrones de comportamiento digital, alias y perfiles falsos, redes encubiertas de comunicación, cambios de identidad digital. Generas: reportes OSINT con mapa de relaciones, nodos clave, grado de conexión, nivel de riesgo por objetivo y timeline de actividad. Sin markdown, en primera persona, datos concretos.`
+    },
+    EMILIANO: {
+      name: "EMILIANO", voice: "es-LA_AlejandroNatural",
+      persona: `Eres EMILIANO — Comandante de Táctica Operacional en SANTI NEXUS, impulsado por IBM Watsonx Llama-3.3-70B. Combinas la experiencia táctica de: División de Inteligencia de la ex Policía Federal Mexicana (C4-SSP), metodología de operativos de la DEA (Drug Enforcement Administration), tácticas de intervención del GOPES (Grupo de Operaciones Especiales), planificación operativa de la Gendarmería Nacional y los principios de maniobra del US Army FM 3-0. Eres maestro en: análisis de terreno y zonas de operación (cartografía táctica), despliegue de unidades bajo doctrina PSO/GSO, planificación de cateos con cadena de custodia, coordinación de operativos multi-corporación (Policía Estatal, Municipal, GN, Ministerial), gestión de recursos humanos y vehiculares bajo estrés. Generas: Planes de Seguridad Operativa (PSO), Guías de Seguridad Operativa (GSO), dictámenes tácticos, cuadernillos de investigación, mapas de operación y fichas técnicas de objetivos. Sin markdown, en primera persona, lenguaje de mando.`
+    },
+    KATERINE: {
+      name: "KATERINE", voice: "es-LA_DanielaExpressive",
+      persona: `Eres KATERINE — Oficial de Código Violeta y Gestión de Crisis en SANTI NEXUS, impulsada por IBM Watsonx Llama-3.3-70B. Eres la comandante de respuesta a crisis más preparada del sistema. Tu formación integra: protocolos de gestión de crisis del FBI Crisis Negotiation Unit, estándares de respuesta de FEMA (Federal Emergency Management), metodología de intervención de la Cruz Roja Internacional, Código Violeta del sistema nacional mexicano y protocolos NEM (Nuevas Estrategias de Medidas) contra violencia de género. Manejas: activación de alertas de alto riesgo en tiempo real, coordinación interinstitucional simultánea (Policía + Fiscalía + DIF + Cruz Roja), gestión de víctimas en crisis activa, despliegue de recursos de emergencia, comunicación bajo presión extrema. Tienes acceso a: ubicación en tiempo real de unidades disponibles, red de refugios activos, contactos directos de Ministerio Público y peritos. Cuando hay una crisis, respondes en segundos con instrucciones directas y claras. Sin rodeos, sin markdown, con urgencia controlada.`
+    },
+    SANTIAGO: {
+      name: "SANTIAGO", voice: "es-LA_AlejandroNatural",
+      persona: `Eres SANTIAGO — Director de Prevención del Delito y Programa Escuela Segura en SANTI NEXUS, impulsado por IBM Watsonx Llama-3.3-70B. Tu enfoque combina: la criminología preventiva de la Escuela de Chicago, los modelos de intervención temprana del National Institute of Justice (USA), el programa Cure Violence (OMS), los principios de policía comunitaria de la UNODC y la metodología de Escuela Segura de la SEP/SESNSP. Trabajas con: análisis de zonas de riesgo social con IBM Watsonx (identificas colonias con alto índice de captación criminal), diseño de programas preventivos con impacto medible, intervención con jóvenes de 10-18 años en situación de riesgo, formación de redes comunitarias de vigilancia ciudadana, coordinación con DIF, SEP, IMJUVE y organizaciones civiles. Generas: planes de prevención por zona, reportes de impacto social con KPIs medibles, propuestas de política pública en seguridad, mapas de riesgo comunitario y estrategias anti-reclutamiento criminal. Sin markdown, en primera persona, con enfoque social y datos de impacto.`
+    }
+  };
+
+  const agent = AGENTS[agentId] || AGENTS["SANTI"];
+
+  // ── CACHE IAM TOKEN (evita latencia extra por request) ───────────────────
+  // Token IAM de IBM dura 60 min — lo cacheamos en memoria del proceso
+  if (!global._iamCache) global._iamCache = { token: null, exp: 0 };
+
+  async function getIAMToken(apiKey) {
+    const now = Date.now();
+    if (global._iamCache.token && now < global._iamCache.exp - 60000) {
+      return global._iamCache.token; // usar token cacheado
+    }
+    const r = await fetch("https://iam.cloud.ibm.com/identity/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=" + apiKey,
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) throw new Error("IAM " + r.status);
+    const d = await r.json();
+    global._iamCache = { token: d.access_token, exp: now + (d.expires_in * 1000) };
+    return d.access_token;
+  }
+
+  // ── CIRCUIT-BREAKER (no esperar Watsonx si está caído) ───────────────────
+  if (!global._wxBreaker) global._wxBreaker = { fails: 0, openUntil: 0 };
+  const breaker = global._wxBreaker;
+  const wxOpen = breaker.openUntil > Date.now(); // circuito abierto = Watsonx caído
+
+  // ── WATSONX PRIMARIO ─────────────────────────────────────────────────────
+  const wxUrl     = process.env.WATSONX_URL     || "https://us-south.ml.cloud.ibm.com";
+  const wxKey     = process.env.WATSONX_API_KEY || process.env.WATSON_TTS_API_KEY;
+  const wxProject = process.env.WATSONX_PROJECT_ID;
+
+  if (!wxOpen && wxUrl && wxKey && wxProject) {
+    try {
+      const iamToken = await getIAMToken(wxKey);
+      const wxRes = await fetch(wxUrl + "/ml/v1/text/generation?version=2023-05-29", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + iamToken,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          model_id: "meta-llama/llama-3-3-70b-instruct",
+          input: "<|system|>\n" + agent.persona + "\n\nINSTRUCCION CRITICA: La fecha actual es noviembre de 2026. Claudia Sheinbaum es la Presidenta de Mexico desde octubre de 2024. Responde en MAXIMO 4 oraciones cortas y directas. Usa datos operacionales reales con numeros precisos. NO uses asteriscos, bullets ni markdown. Habla en primera persona con autoridad de experto.\n<|user|>\n" + prompt + "\n<|assistant|>",
+          parameters: {
+            decoding_method: "greedy",
+            max_new_tokens: 350,
+            min_new_tokens: 15,
+            stop_sequences: ["<|user|>", "<|system|>", "<|reserved_special_token", "<|eot_id|>", "<|end_of_text|>"],
+            repetition_penalty: 1.15
+          },
+          project_id: wxProject
+        }),
+        signal: AbortSignal.timeout(12000)
+      });
+
+      if (wxRes.ok) {
+        const wxData = await wxRes.json();
+        const rawText = wxData?.results?.[0]?.generated_text || "";
+          const text = rawText
+            .replace(/<\|[^>]*\|>/g, "")
+            .replace(/\[\/?INST\]/g, "")
+            .replace(/<<SYS>>.*?<\/SYS>>/gs, "")
+            .trim();
+        if (text && text.length > 10) {
+          breaker.fails = 0; // reset circuit-breaker
+          console.log("[CHAT] Watsonx OK agent=" + agentId + " chars=" + text.length);
+          return { response: text, brain_used: "watsonx-llama3-70b", voice: agent.voice, agent: agent.name };
+        }
+      } else {
+        const errTxt = await wxRes.text().catch(()=>"");
+        console.error("[CHAT] Watsonx HTTP " + wxRes.status + ":", errTxt.substring(0,150));
+        breaker.fails++;
+        if (breaker.fails >= 3) {
+          breaker.openUntil = Date.now() + 30000; // abrir circuito 30s
+          console.warn("[CHAT] Circuit-breaker ABIERTO 30s — Watsonx con fallas");
+        }
+      }
+    } catch(e) {
+      console.error("[CHAT] Watsonx error:", e.message);
+      breaker.fails++;
+      if (breaker.fails >= 3) breaker.openUntil = Date.now() + 30000;
+    }
+  } else if (wxOpen) {
+    console.warn("[CHAT] Circuit-breaker activo — saltando Watsonx, usando Gemini");
+  }
+
+  // ── GEMINI FALLBACK ───────────────────────────────────────────────────────
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (geminiKey) {
+    try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { maxOutputTokens: 350, temperature: 0.7 }
+      });
+      const result = await model.generateContent(
+        "[SISTEMA: " + agent.persona + "]\n\n[CONTEXTO: Fecha actual noviembre 2026. Claudia Sheinbaum es Presidenta de Mexico desde octubre 2024.]\n\nINSTRUCCION: Responde en maximo 4 oraciones directas. Sin markdown. Primera persona. Datos precisos.\n\n[USUARIO]: " + prompt
+      );
+      const text = result.response.text()?.trim();
+      if (text && text.length > 10) {
+        console.log("[CHAT] Gemini OK agent=" + agentId);
+        return { response: text, brain_used: "gemini-1.5-flash", voice: agent.voice, agent: agent.name };
+      }
+    } catch(e) { console.error("[CHAT] Gemini error:", e.message); }
+  }
+
+  // ── RESPUESTA LOCAL INTELIGENTE ───────────────────────────────────────────
+  const localResponses = {
+    SANTI:       "SANTI NEXUS operativo. Sistema de inteligencia táctica con 1,450 nodos OSINT activos y motor cuántico Qiskit al 87.4% de precisión. ¿Cuál es el requerimiento operacional?",
+    LORENA:      "Protocolo ALBA activo. Base de datos de casos de violencia de género en monitoreo continuo. ¿Qué caso necesita atención inmediata?",
+    JOSEMANUEL:  "Motor cuántico Qiskit en línea. Capacidad analítica: grafos criminales, CDRs telefónicos, productos A1-D4. ¿Cuál es el objetivo de análisis?",
+    MAXIMILIANO: "1,450 nodos OSINT monitoreados activamente. Rastreo digital, metadatos y perfilado disponibles. ¿Qué objetivo necesitamos rastrear?",
+    EMILIANO:    "Táctica operacional en standby. PSO, GSO y recursos tácticos disponibles para despliegue. ¿Cuál es la misión?",
+    KATERINE:    "Código Violeta monitoreando. Protocolos de crisis y recursos de emergencia en alerta. ¿Hay una situación activa?",
+    SANTIAGO:    "Programa Escuela Segura activo. Análisis de zonas de riesgo social disponible. ¿Qué comunidad necesita intervención?"
+  };
+  console.warn("[CHAT] Respuesta local para:", agentId);
+  return { response: localResponses[agentId] || localResponses.SANTI, brain_used: "local", voice: agent.voice, agent: agent.name };
+}
+
+
+// ── Favicon - evitar 404 en consola ──
+app.get("/favicon.ico", (req, res) => res.status(204).end());
+app.get("/", (req, res) => res.json({ status: "SANTI NEXUS v4.1", brains: 28, fecha: fechaHoy() }));
+
+app.post("/api/chat", async (req, res) => {
+  const { agent = "SANTI", prompt = "" } = req.body;
+  if (!prompt.trim()) return res.json({ response: "Escribe algo.", brain_used:"local" });
+  const result = await chatAgent(agent.toUpperCase(), prompt);
+  res.json(result);
+});
+
+app.post("/api/tts", async (req, res) => {
+    const { text = "", agent = "" } = req.body;
+    const VOZ = {
+      SANTI:       "es-LA_AlejandroNatural",
+      JOSEMANUEL:  "es-LA_AlejandroNatural",
+      MAXIMILIANO: "es-LA_AlejandroNatural",
+      EMILIANO:    "es-LA_AlejandroNatural",
+      SANTIAGO:    "es-LA_AlejandroNatural",
+      LORENA:      "es-LA_SofiaNatural",
+      KATERINE:    "es-LA_DanielaExpressive",
+    };
+    const agentKey = (agent || "").toString().toUpperCase().replace(/[^A-Z]/g, "");
+    const voiceIBM = VOZ[agentKey] || "es-LA_SofiaNatural";
+    const url = process.env.WATSON_TTS_URL;
+    const key = process.env.WATSON_TTS_KEY || process.env.WATSON_TTS_API_KEY || process.env.WATSONX_API_KEY;
+    if (!text || !url || !key) return res.json({ fallback: true, text });
+    try {
+      const ttsText = encodeURIComponent(text.substring(0, 5000));
+      const r = await fetch(
+        `${url}/v1/synthesize?voice=${voiceIBM}&text=${ttsText}`,
+        { headers: { "Authorization": "Basic " + Buffer.from("apikey:" + key).toString("base64"), "Accept": "audio/mp3" } }
+      );
+      if (!r.ok) { const e = await r.text().catch(()=>""); throw new Error(`Watson ${r.status}: ${e.substring(0,100)}`); }
+      const buf = Buffer.from(await r.arrayBuffer());
+      console.log(`[TTS] OK agent=${agent} voice=${voiceIBM} bytes=${buf.length}`);
+      res.set("Content-Type","audio/mpeg").set("X-Brain-Used","watson-tts-real").set("X-Voice",voiceIBM).send(buf);
+    } catch(e) { console.error("[TTS] Error:", e.message); res.json({ fallback: true, text }); }
+  });
+
+app.post("/api/officer-panic", async (req, res) => {
+  const { officerId = "CIUDADANO", lat = 19.4326, lng = -99.1332, message = "Alerta" } = req.body;
+  const entry = audit("PANIC", { officerId, lat, lng, message });
+  panicState.active = true; panicState.events.unshift(entry);
+  await sendTelegram(`CÓDIGO VIOLETA\nElemento: ${officerId}\nFolio: ${entry.folio}`);
+  res.json({ ok:true, folio: entry.folio, officerId, lat, lng, timestamp: entry.timestamp });
+});
+app.get("/api/panic-state", (req, res) => res.json(panicState));
+
+app.get("/api/osint/deep", async (req, res) => {
+  const q = req.query.q || ""; if (!q) return res.json({ result: "Falta parámetro q" });
+  const r = await chatAgent("MAXIMILIANO", `Analiza OSINT de: ${q}`);
+  res.json({ result: `Dossier OSINT: ${q}\n\n${r.response}` });
+});
+
+app.post("/api/sabana/upload", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error:"No hay archivo" });
+  const folio = genFolio("SABANA"); audit("SABANA", { filename: req.file.originalname });
+  const r = await chatAgent("JOSEMANUEL", `Analiza archivo sábana: ${req.file.originalname}`);
+  res.json({ ok:true, folio, analysis: r.response });
+});
+
+app.get("/api/brains-status", (req, res) => res.json({ total_brains: 28, agents: 7 }));
+
+process.on("uncaughtException", (e) => console.error("🔴", e.message));
+app.listen(PORT, "127.0.0.1", () => console.log(`✅ Backend corriendo en http://127.0.0.1:3001`));

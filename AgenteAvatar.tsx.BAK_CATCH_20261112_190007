@@ -1,0 +1,179 @@
+import React, { useState, useEffect, useRef } from "react";
+
+interface Agent { id: string; name: string; role: string; color: string; gender: "male" | "female"; pitch: number; rate: number; icon: string; division: string; clearance: number; }
+interface Msg { role: "user" | "agent"; text: string; agent?: string; timestamp: string; id: string; priority: "normal" | "high" | "critical"; }
+
+const AGENT_SANTI: Agent      = { id: "SANTI",       name: "SANTI",       role: "C.M.O.", color: "#c8a84b", gender: "male", pitch: 0.8, rate: 0.85, icon: "👮", division: "Central", clearance: 5 };
+const AGENT_LORENA: Agent     = { id: "LORENA",      name: "LORENA",      role: "DDHH", color: "#ff4fc8", gender: "female", pitch: 1.5, rate: 0.85, icon: "🌸", division: "Protección", clearance: 4 };
+const AGENT_JOSE_MANUEL: Agent= { id: "JOSEMANUEL",  name: "JOSÉ MANUEL", role: "Datos", color: "#00e676", gender: "male", pitch: 0.82, rate: 0.88, icon: "🎖️", division: "Inteligencia", clearance: 5 };
+const AGENT_MAXIMILIANO: Agent= { id: "MAXIMILIANO", name: "MAXI",        role: "OSINT", color: "#9c27b0", gender: "male", pitch: 0.84, rate: 0.87, icon: "🔎", division: "Ciber", clearance: 5 };
+const AGENT_EMILIANO: Agent   = { id: "EMILIANO",    name: "EMILIANO",    role: "Táctico", color: "#1e88e5", gender: "male", pitch: 0.88, rate: 0.92, icon: "⚔️", division: "Campo", clearance: 4 };
+const AGENT_KATERINE: Agent   = { id: "KATERINE",    name: "KATERINE",    role: "Víctimas", color: "#e91e8c", gender: "female", pitch: 1.4, rate: 0.83, icon: "🦋", division: "Atención", clearance: 5 };
+const AGENT_SANTIAGO: Agent   = { id: "SANTIAGO",    name: "SANTIAGO",    role: "Prevención", color: "#00897b", gender: "male", pitch: 0.95, rate: 0.9, icon: "🏫", division: "Social", clearance: 3 };
+const ALL_AGENTS = [AGENT_SANTI, AGENT_LORENA, AGENT_JOSE_MANUEL, AGENT_MAXIMILIANO, AGENT_EMILIANO, AGENT_KATERINE, AGENT_SANTIAGO];
+
+const HologramAvatar: React.FC<{ agent: Agent; speaking: boolean }> = ({ agent, speaking }) => {
+  const isFemale = agent.gender === "female";
+  return (
+    <div style={{ width: "100%", height: "100%", position: "relative", display: "flex", justifyContent: "center", alignItems: "center", perspective: "1000px" }}>
+      <div style={{ position: "absolute", bottom: 10, width: "150px", height: "30px", background: `radial-gradient(ellipse, ${agent.color}88 0%, transparent 70%)`, borderRadius: "50%", filter: "blur(8px)", animation: "pulse 2s infinite" }} />
+      <svg width="150" height="250" viewBox="0 0 100 180" style={{ transform: speaking ? "scale(1.02) translateZ(30px)" : "scale(1) translateZ(0)", transition: "all 0.3s ease", filter: `drop-shadow(0 0 15px ${agent.color}) drop-shadow(0 0 30px ${agent.color}66)` }}>
+        <ellipse cx="50" cy="35" rx="18" ry="22" fill={`${agent.color}22`} stroke={agent.color} strokeWidth="2" />
+        {isFemale && <path d="M 30 35 Q 25 15 50 12 Q 75 15 70 35 Q 75 60 65 70 L 60 50 Q 50 45 40 50 L 35 70 Q 25 60 30 35 Z" fill={`${agent.color}55`} stroke={agent.color} strokeWidth="1" />}
+        {!isFemale && <path d="M 32 30 Q 30 15 50 12 Q 70 15 68 30 Q 60 25 50 25 Q 40 25 32 30 Z" fill={`${agent.color}77`} stroke={agent.color} strokeWidth="1" />}
+        <circle cx="42" cy="35" r="3" fill={agent.color} /><circle cx="58" cy="35" r="3" fill={agent.color} />
+        <ellipse cx="50" cy="48" rx={speaking ? 8 : 4} ry={speaking ? 5 : 2} fill={agent.color} style={{ transition: "all 0.15s" }} />
+        <rect x="44" y="55" width="12" height="15" fill={`${agent.color}33`} />
+        <path d="M 25 75 Q 25 65 50 65 Q 75 65 75 75 L 70 130 L 30 130 Z" fill={`${agent.color}22`} stroke={agent.color} strokeWidth="2" />
+        <path d="M 35 130 L 40 180 L 25 180 L 30 130 Z" fill={`${agent.color}22`} stroke={agent.color} strokeWidth="1" />
+        <path d="M 65 130 L 60 180 L 75 180 L 70 130 Z" fill={`${agent.color}22`} stroke={agent.color} strokeWidth="1" />
+      </svg>
+      <div style={{ position: "absolute", width: "100%", height: "2px", background: `linear-gradient(90deg, transparent, ${agent.color}, transparent)`, animation: "scan 2s linear infinite", pointerEvents: "none" }} />
+      <style>{`@keyframes scan { 0% { top: 10%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 90%; opacity: 0; } } @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }`}</style>
+    </div>
+  );
+};
+
+function speakTextNative(text: string, agent: Agent, onEnd: () => void): void {
+  if (!window.speechSynthesis) { onEnd(); return; }
+  window.speechSynthesis.cancel();
+  const isFemale = agent.gender === "female";
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "es-US";
+  u.volume = 1;
+  if (isFemale) {
+    u.pitch = 1.8;
+    u.rate = 1.0;
+  } else {
+    u.pitch = 0.2;
+    u.rate = 0.75;
+  }
+  const voices = window.speechSynthesis.getVoices();
+  const esVoices = voices.filter(v => v.lang.toLowerCase().startsWith("es"));
+  if (esVoices.length > 0) {
+    if (isFemale) {
+      const fem = esVoices.find(v => /female|mujer|sofia|paulina|helena|sabina|laura|monica|mónica|lucia/i.test(v.name));
+      u.voice = fem || esVoices[0];
+    } else {
+      const masc = esVoices.find(v => /male|hombre|jorge|diego|juan|carlos|enrique|raul|pablo|miguel/i.test(v.name));
+      u.voice = masc || esVoices[0];
+    }
+  }
+  u.onend = onEnd;
+  u.onerror = onEnd;
+  setTimeout(() => { try { window.speechSynthesis.speak(u); } catch(e) { onEnd(); } }, 100);
+}
+
+async function speakTextWatson(text: string, agent: Agent, onEnd: () => void): Promise<void> {
+    // ── Watson TTS blindado - nunca cae a voz ronca ──
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text.substring(0, 800), agent: agent.id })
+    });
+    if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
+    const arrayBuffer = await res.arrayBuffer();
+    if (!arrayBuffer || arrayBuffer.byteLength < 100) throw new Error("TTS audio vacio");
+    const blob = new Blob([arrayBuffer], { type: "audio/mp3" });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio();
+    audio.preload = "auto";
+    await new Promise<void>((resolve, reject) => {
+      audio.oncanplaythrough = () => {
+        audio.onended = () => { URL.revokeObjectURL(url); onEnd(); };
+        audio.onerror = (e) => { URL.revokeObjectURL(url); reject(new Error("audio.onerror")); };
+        audio.play().then(() => {
+          (window as any).currentAudio = audio;
+          resolve();
+        }).catch(reject);
+      };
+      audio.onerror = () => reject(new Error("audio load error"));
+      audio.src = url;
+      audio.load();
+    });
+  } catch (err) {
+    console.warn("[TTS] Watson fallo, usando nativa:", err);
+    speakTextNative(text, agent, onEnd);
+  }
+}
+
+export const AgenteAvatar: React.FC = () => {
+  const [authed, setAuthed] = useState(() => localStorage.getItem("santi_auth") === "true");
+  const [activeAgent, setActiveAgent] = useState<Agent>(AGENT_SANTI);
+  const [messages, setMessages] = useState<Msg[]>([{ role: "agent", text: "SISTEMA SANTI NEXUS EN LÍNEA.", agent: AGENT_SANTI.id, timestamp: new Date().toLocaleTimeString(), id: "1", priority: "normal" }]);
+  const [input, setInput] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const selectAgent = (ag: Agent) => {
+    if ((window as any).currentAudio) (window as any).currentAudio.pause();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    setSpeaking(false); setActiveAgent(ag);
+    setMessages([{ role: "agent", text: `${ag.name} EN LÍNEA.`, agent: ag.id, timestamp: new Date().toLocaleTimeString(), id: Date.now().toString(), priority: "normal" }]);
+    setSpeaking(true); speakTextWatson(`${ag.name} en línea.`, ag, () => setSpeaking(false));
+  };
+
+  const sendMessage = async () => {
+    if (!input.trim() || thinking) return;
+    const msg = input.trim(); setInput("");
+    setMessages(m => [...m, { role: "user", text: msg, timestamp: new Date().toLocaleTimeString(), id: Date.now().toString(), priority: "normal" }]);
+    setThinking(true);
+    try {
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agent: activeAgent.id, prompt: msg }) });
+      const data = await res.json(); const reply = data.response || "Sin respuesta.";
+      setMessages(m => [...m, { role: "agent", text: reply, agent: activeAgent.id, timestamp: new Date().toLocaleTimeString(), id: Date.now().toString(), priority: "normal" }]);
+      setSpeaking(true); speakTextWatson(reply, activeAgent, () => setSpeaking(false));
+    } catch { setMessages(m => [...m, { role: "agent", text: "ERROR.", agent: activeAgent.id, timestamp: new Date().toLocaleTimeString(), id: Date.now().toString(), priority: "critical" }]); }
+    setThinking(false);
+  };
+
+  if (!authed) return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", background: "#020810", color: "#00ffcc", fontFamily: "monospace" }}>
+      <h1>SANTI NEXUS</h1>
+      <div onClick={() => { setAuthed(true); localStorage.setItem("santi_auth", "true"); }} style={{ width: 100, height: 100, borderRadius: "50%", border: "2px solid #00ffcc", display: "flex", justifyContent: "center", alignItems: "center", cursor: "pointer", margin: 20, fontSize: 40 }}>🔒</div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", height: "100vh", background: "#020810", color: "#e0ffe8", fontFamily: "monospace", overflow: "hidden" }}>
+      <div style={{ width: 160, borderRight: "1px solid rgba(0,255,200,0.1)", padding: 10, display: "flex", flexDirection: "column", gap: 8, background: "rgba(2,8,16,0.9)" }}>
+        <p style={{ color: "#00ffcc", fontSize: 9, textAlign: "center" }}>AGENTES</p>
+        {ALL_AGENTS.map((a) => (
+          <button key={a.id} onClick={() => selectAgent(a)} style={{ background: activeAgent.id === a.id ? `${a.color}22` : "transparent", border: `1px solid ${activeAgent.id === a.id ? a.color : "transparent"}`, borderRadius: 8, padding: 8, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${a.color}33`, border: `2px solid ${a.color}`, display: "flex", justifyContent: "center", alignItems: "center", fontSize: 20 }}>{a.icon}</div>
+            <span style={{ color: a.color, fontSize: 8, fontWeight: "bold" }}>{a.name}</span>
+          </button>
+        ))}
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid rgba(0,255,200,0.1)" }}>
+        <div style={{ padding: 15, borderBottom: "1px solid rgba(0,255,200,0.1)", display: "flex", alignItems: "center", gap: 20, background: `linear-gradient(90deg, ${activeAgent.color}22 0%, transparent 100%)` }}>
+          <div style={{ width: 150, height: 250 }}><HologramAvatar agent={activeAgent} speaking={speaking} /></div>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 20, color: activeAgent.color }}>{activeAgent.name}</h2>
+            <p style={{ margin: "5px 0", fontSize: 12, color: "#8aa" }}>DIVISIÓN: {activeAgent.division}</p>
+            <p style={{ margin: 0, fontSize: 12, color: "#8aa" }}>NIVEL: {activeAgent.clearance}</p>
+          </div>
+          <button onClick={() => { if ((window as any).currentAudio) (window as any).currentAudio.pause(); if (window.speechSynthesis) window.speechSynthesis.cancel(); setSpeaking(false); }} style={{ padding: "10px 20px", background: "#ff1744", border: "none", color: "#fff", borderRadius: 6, cursor: "pointer", fontWeight: "bold" }}>🛑 SILENCIO</button>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          {messages.map(m => (
+            <div key={m.id} style={{ marginBottom: 15, display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+              <div style={{ padding: "10px 15px", borderRadius: 8, background: m.role === "user" ? "rgba(200,168,75,0.15)" : `${activeAgent.color}15`, border: `1px solid ${m.role === "user" ? "#c8a84b" : activeAgent.color}`, fontSize: 12, maxWidth: "80%", lineHeight: 1.6 }}>{m.text}</div>
+            </div>
+          ))}
+          {thinking && <p style={{ color: "#00ffcc", fontSize: 10 }}>⏳ Procesando...</p>}
+          <div ref={chatEndRef} />
+        </div>
+        <div style={{ padding: 15, borderTop: "1px solid rgba(0,255,200,0.1)", display: "flex", gap: 10 }}>
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()} placeholder="Consulta táctica..." style={{ flex: 1, padding: 12, background: "rgba(0,20,12,0.8)", border: "1px solid #00ffcc", borderRadius: 6, color: "#fff", fontSize: 12 }} />
+          <button onClick={sendMessage} style={{ padding: "12px 25px", background: "rgba(0,255,200,0.15)", border: "1px solid #00ffcc", color: "#00ffcc", borderRadius: 6, fontSize: 12, fontWeight: "bold" }}>ENVIAR</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+

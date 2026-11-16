@@ -1,0 +1,19 @@
+﻿import React, { useState } from "react";
+export const CitizenGuardian: React.FC = () => {
+  const [folio, setFolio] = useState("");
+  const activar = async () => {
+    try {
+      const res = await fetch("/api/officer-panic", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ officerId:"CIUDADANO", message:"Código Violeta" }) });
+      const data = await res.json();
+      setFolio(data.folio);
+    } catch { alert("Error de conexión"); }
+  };
+  return (
+    <div style={{ padding: 20, background: "#111", color: "#cc44ff", textAlign: "center" }}>
+      <h2>Código Violeta</h2>
+      <button onClick={activar} style={{ padding: 20, borderRadius: "50%", background: "#cc44ff", color: "white" }}>ACTIVAR</button>
+      {folio && <p>Folio: {folio}</p>}
+    </div>
+  );
+};
+export default CitizenGuardian;

@@ -1,0 +1,126 @@
+Perfecto. Aquí tienes la guía completa, paso a paso, para hacerlo **directamente en Replit**:
+
+---
+
+## 🔐 PASO 1 — Confirmar tus Secrets en Replit
+
+En Replit, en el panel izquierdo busca el ícono de **🔒 Secrets** (candado). Verifica que ya tengas estos dos (los encontré en tu `.env`):
+
+```
+IBM_API_KEY         → 0xQNJioGQ-9M_DfRwVzrxYgmK8bYN5jVvuroweKnIYkE
+WATSONX_PROJECT_ID  → f33b2d81-386e-4866-82bc-c688b3aead65
+```
+
+Si no están, agrégalos:
+1. Clic en **"+ Add new secret"**
+2. Key: `IBM_API_KEY`, Value: tu clave
+3. Key: `WATSONX_PROJECT_ID`, Value: tu project ID
+
+---
+
+## 🌐 PASO 2 — Obtener el Token de Acceso de IBM Cloud
+
+watsonx.governance no acepta la API Key directa — necesita un **Bearer Token** temporal. Para generarlo, abre la **Shell de Replit** (pestaña Shell) y escribe:
+
+```bash
+curl -X POST "https://iam.cloud.ibm.com/identity/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=$IBM_API_KEY"
+```
+
+Verás una respuesta como:
+```json
+{ "access_token": "eyJhbGc...", "expires_in": 3600 }
+```
+
+Si ves `access_token` → **tu IBM_API_KEY es válida** ✅  
+Si ves error `"Bad Request"` → la clave expiró, necesitas renovarla en cloud.ibm.com
+
+---
+
+## 🔧 PASO 3 — Actualizar el código en Replit
+
+En el editor de Replit, abre el archivo [`server.js`](server.js) y reemplaza el bloque del endpoint Watson (líneas 167-173) con este código real:
+
+```javascript
+// F. WATSONX GOVERNANCE AUDIT — REAL (IBM Cloud IAM)
+app.post('/api/watson/audit', async (req, res) => {
+  const { decision, agentId, incidentType } = req.body;
+
+  try {
+    // Paso 1: obtener token IAM de IBM
+    const tokenResp = await axios.post(
+      'https://iam.cloud.ibm.com/identity/token',
+      'grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=' + process.env.IBM_API_KEY,
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10000 }
+    );
+    const iamToken = tokenResp.data.access_token;
+
+    // Paso 2: llamar a watsonx.governance (OpenScale)
+    const auditResp = await axios.post(
+      `https://us-south.ml.cloud.ibm.com/ml/v1/deployments/monitor?version=2024-05-13`,
+      {
+        project_id: process.env.WATSONX_PROJECT_ID,
+        input: { decision, agentId, incidentType: incidentType || 'general' },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${iamToken}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
+
+    res.json({
+      audited: true,
+      sesgo_detectado: auditResp.data?.bias_score < 0.3 ? "Bajo" : "Alto",
+      transparencia: auditResp.data?.explainability_score > 0.7 ? "Alta" : "Media",
+      analisis: `Watsonx Governance REAL: Bias=${auditResp.data?.bias_score ?? 'N/A'} · Explainability=${auditResp.data?.explainability_score ?? 'N/A'}`,
+      raw: auditResp.data,
+    });
+
+  } catch (error) {
+    // Fallback honesto — no pretende ser real
+    const status = error?.response?.status ?? 'network';
+    console.error(`[WATSON] ❌ HTTP ${status}:`, error?.response?.data ?? error?.message);
+    res.json({
+      audited: false,
+      sesgo_detectado: "No evaluado",
+      transparencia: "No evaluada",
+      analisis: `Watsonx Governance: Sin conexión (${status}). Requiere IBM_API_KEY activa.`,
+      _debug: { status, hint: error?.message?.substring(0, 120) }
+    });
+  }
+});
+```
+
+---
+
+## ✅ PASO 4 — Probar desde la Shell de Replit
+
+Una vez guardado el archivo, en la Shell ejecuta:
+
+```bash
+curl -X POST http://localhost:3001/api/watson/audit \
+  -H "Content-Type: application/json" \
+  -d '{"decision":"dispatch_unit","agentId":"EMILIANO","incidentType":"Robo"}'
+```
+
+**Si funciona bien** verás `"audited": true` con scores reales.  
+**Si falla** verás `"audited": false` con el mensaje de error — eso ya es honesto y no engaña al jurado.
+
+---
+
+## 📋 RESUMEN RÁPIDO
+
+```
+Replit → 🔒 Secrets → confirmar IBM_API_KEY y WATSONX_PROJECT_ID
+Shell  → curl para verificar token IAM
+Editor → reemplazar líneas 167-173 en server.js
+Shell  → reiniciar servidor y probar
+```
+
+---
+
+¿Quieres que haga yo el cambio directamente en tu [`server.js`](server.js) ahora mismo con el código real? Solo me dices "sí" y lo aplico.

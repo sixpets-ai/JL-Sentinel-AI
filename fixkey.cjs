@@ -1,0 +1,1 @@
+﻿const fs=require('fs');const p='C:/Users/Wyse/Desktop/J-L-Sentinel-AI/05_Respaldo_Codigo/Intelligent-Patrols/App.tsx';let c=fs.readFileSync(p,'utf8');c=c.replace('<div key={view} className="santi-body">','<div className="santi-body">');fs.writeFileSync(p,c,'utf8');console.log('FIX KEY OK');

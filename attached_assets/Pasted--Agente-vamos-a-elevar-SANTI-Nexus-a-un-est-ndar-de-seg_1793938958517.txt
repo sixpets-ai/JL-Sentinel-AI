@@ -1,0 +1,11 @@
+"Agente, vamos a elevar SANTI Nexus a un estándar de seguridad gubernamental e internacional. Ignora los ejemplos genéricos anteriores. Implementa los siguientes módulos sin romper la lógica actual:
+
+1. Catálogo Maestro de Delitos (Taxonomía): Crea un archivo crime_catalog.json o un Enum en la base de datos que incluya el catálogo completo del fuero común, federal, municipal, CNPJ (Centro Nacional de Prevención del Delito y Participación Ciudadana) y estándares internacionales (Interpol). Incluye delitos de alto impacto, delitos patrimoniales, de género, secuestro, extorsión, etc. El mapa y el generador de datos de Python deben usar estas categorías exactas.
+
+2. Libro Mayor Inmutable (Anti-Corrupción y Auditoría): Modifica la lógica de incidentes. Un folio, una vez creado, es inmutable. Está estrictamente prohibido el UPDATE o DELETE de un incidente. Si un oficial o mando necesita aclarar o cancelar un reporte por falsedad, el sistema debe crear un "Registro de Enmienda" vinculado al folio original, el cual debe incluir: un hash criptográfico (SHA-256) del reporte original, la justificación, y el requerimiento de una firma biométrica (simulada con un token de validación) para que quede sellado. Nadie, ni el director, puede borrar la verdad de lo que pasó.
+
+3. Módulo de Evidencia Multidispositivo: Añade a la base de datos y a la UI un sistema para adjuntar/enlazar evidencia (Cámaras de seguridad CCTV, dispositivos Android/iOS, tablets, laptops). Cuando se genere una alerta, debe haber un apartado de "Cadena de Custodia Digital" con los enlaces o referencias a estas fuentes.
+
+4. UI de Transparencia: En el Centro de Mando, agrega un ícono de "Candado Sellado" en los reportes inmutables. Si hay una enmienda, muestra el historial de cambios con un diseño de línea de tiempo (Timeline) para que se vea que el sistema rastrea absolutamente todo.
+
+Quiero una arquitectura blindada. Usa transacciones en la base de datos (Drizzle ORM) para garantizar que no haya corrupción de datos. ¡Demuéstrame de lo que eres capaz!"

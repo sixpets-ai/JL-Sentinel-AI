@@ -1,6 +1,6 @@
 {
-  "version": "RNID-2026-v1.0+ICCS-1.0-es",
-  "warning": "Catálogos estadísticos, no determinación de culpabilidad ni código penal. RNID2026-### son identificadores INTERNOS de SANTI, no códigos oficiales. Las etiquetas RNID se transcriben de la tabla de las páginas 29–32 del manual. Su tabla contiene 78 renglones aunque la introducción institucional anuncia 71 delitos; se conserva la tabla íntegra y se declara esta discrepancia, sin inventar ni suprimir categorías. ICCS conserva sus códigos oficiales con prefijo de sistema. No hay equivalencia jurídica automática RNID/ICCS, catálogo penal municipal/federal completo ni certificación de Interpol.",
+  "version": "RNID-2026-v1.0+ICCS-1.0-es+HIA-v1.0",
+  "warning": "Catálogos estadísticos, no determinación de culpabilidad ni código penal. RNID2026-### son identificadores INTERNOS de SANTI, no códigos oficiales. Las etiquetas RNID se transcriben de la tabla de las páginas 29–32 del manual. Su tabla contiene 78 renglones aunque la introducción institucional anuncia 71 delitos; se conserva la tabla íntegra y se declara esta discrepancia, sin inventar ni suprimir categorías. ICCS conserva sus códigos oficiales con prefijo de sistema. No hay equivalencia jurídica automática RNID/ICCS, catálogo penal municipal/federal completo ni certificación de Interpol. HIA (High-Impact Annotations) son metadatos operativos internos de SANTI NEXUS; no son tipificación legal.",
   "sources": [
     {
       "system": "RNID",
@@ -17,6 +17,127 @@
       "scope": "Todos los códigos y nombres presentes en las once hojas de la plantilla oficial de correspondencia."
     }
   ],
+  "high_impact": {
+    "_note": "Anotaciones operativas internas para clasificación de alto impacto. No son tipificación legal. Fuente de referencia: SNSP Informe de Incidencia Delictiva 2025.",
+    "categories": [
+      {
+        "id": "HIA-01",
+        "label": "Homicidio doloso con arma de fuego",
+        "acronym": "HDAF",
+        "rnid_ref": "RNID2026-001",
+        "iccs_ref": "ICCS-0101",
+        "folio_prefix": "IPH",
+        "authority": "FGR / SSPC federal",
+        "risk_level": "CRÍTICO",
+        "description": "Privación de la vida con intención mediante arma de fuego. Modalidad de mayor frecuencia en incidencia delictiva nacional SNSP 2025."
+      },
+      {
+        "id": "HIA-02",
+        "label": "Homicidio doloso con arma blanca",
+        "acronym": "HDAB",
+        "rnid_ref": "RNID2026-001",
+        "iccs_ref": "ICCS-0101",
+        "folio_prefix": "IPH",
+        "authority": "FGR / FGE estatal",
+        "risk_level": "CRÍTICO",
+        "description": "Privación de la vida con intención mediante arma punzocortante o contundente."
+      },
+      {
+        "id": "HIA-03",
+        "label": "Secuestro extorsivo",
+        "acronym": "SEX",
+        "rnid_ref": "RNID2026-010",
+        "iccs_ref": "ICCS-0601",
+        "folio_prefix": "UEIDS",
+        "authority": "UEIDS-FGR / SEIDO",
+        "risk_level": "CRÍTICO",
+        "description": "Privación ilegal de la libertad con fines de rescate económico. Competencia federal exclusiva (Ley General para Prevenir y Sancionar los Delitos en Materia de Secuestro)."
+      },
+      {
+        "id": "HIA-04",
+        "label": "Secuestro exprés",
+        "acronym": "SEXP",
+        "rnid_ref": "RNID2026-013",
+        "iccs_ref": "ICCS-0601",
+        "folio_prefix": "UEIDS",
+        "authority": "FGE estatal / FGR si es federal",
+        "risk_level": "CRÍTICO",
+        "description": "Privación de libertad por periodo corto con fines de extorsión inmediata. Alta incidencia urbana según SNSP 2025."
+      },
+      {
+        "id": "HIA-05",
+        "label": "Extorsión presencial (cobro de piso)",
+        "acronym": "EXTP",
+        "rnid_ref": "RNID2026-046",
+        "iccs_ref": "ICCS-07011",
+        "folio_prefix": "FGR",
+        "authority": "FGR / FGE estatal",
+        "risk_level": "ALTO",
+        "description": "Exigencia de dinero mediante violencia o amenaza directa en el lugar. Modalidad de crimen organizado (Gota a Gota, cobro de piso)."
+      },
+      {
+        "id": "HIA-06",
+        "label": "Extorsión telefónica o virtual",
+        "acronym": "EXTV",
+        "rnid_ref": "RNID2026-048",
+        "iccs_ref": "ICCS-07011",
+        "folio_prefix": "FGR",
+        "authority": "FGR (CEAC) / FGE estatal",
+        "risk_level": "ALTO",
+        "description": "Exigencia de dinero mediante llamada, mensaje o redes sociales. El Centro Especializado de Atención a Ciudadanos (CEAC) de la FGR atiende estos casos."
+      },
+      {
+        "id": "HIA-07",
+        "label": "Narcomenudeo con fines de venta (crimen organizado)",
+        "acronym": "NMCO",
+        "rnid_ref": "RNID2026-066",
+        "iccs_ref": "ICCS-10011",
+        "folio_prefix": "FGR",
+        "authority": "FGR / SEMAR / SEDENA (si aplica fractura)",
+        "risk_level": "ALTO",
+        "description": "Venta al menudeo de sustancias ilegales con indicios de estructura de crimen organizado. Competencia concurrente federal-estatal según Ley General de Salud Art. 478."
+      },
+      {
+        "id": "HIA-08",
+        "label": "Feminicidio",
+        "acronym": "FEM",
+        "rnid_ref": "RNID2026-006",
+        "iccs_ref": "ICCS-01011",
+        "folio_prefix": "AVG",
+        "authority": "FGE estatal (Fiscalía Especializada en Género)",
+        "risk_level": "CRÍTICO",
+        "description": "Homicidio doloso de mujer por razones de género. Requiere activación de Alerta de Violencia de Género (AVG) si corresponde al protocolo nacional."
+      }
+    ],
+    "folio_schema": {
+      "_note": "Formato de folio inmutable para SANTI NEXUS. El prefijo determina la autoridad competente. El año es fijo al año de registro. El secuencial es de 4 dígitos con ceros a la izquierda.",
+      "format": "{PREFIX}-{YEAR}-{SEQ:04}",
+      "example": "IPH-2026-0042",
+      "prefixes": {
+        "IPH":  "Incidente de alto impacto — FGR / SSPC federal",
+        "FGR":  "Competencia federal directa — FGR",
+        "UEIDS": "Unidad especializada antisecuestros UEIDS-FGR (Secuestro — competencia federal exclusiva)",
+        "AVG":  "Alerta de Violencia de Género — FGE Género",
+        "MUN":  "Incidente municipal — Policía municipal",
+        "EST":  "Incidente estatal — Policía estatal / FGE",
+        "GN":   "Intervención Guardia Nacional",
+        "SSPC": "Coordinación SSPC federal"
+      }
+    },
+    "patrol_units_catalog": {
+      "_note": "Catálogo de unidades para simulación táctica. Corporaciones reales; identificadores y posiciones son ficticios para demostración educativa.",
+      "corporations": ["SSPC", "Guardia Nacional", "Policía Estatal", "Policía Municipal", "Marina-SEMAR", "FGR-UEIDS"],
+      "unit_id_format": "P-{NNN}",
+      "sample_units": [
+        { "id": "P-042", "corp": "SSPC",             "status": "Patrullando",    "sector": "Zona Norte" },
+        { "id": "P-107", "corp": "Guardia Nacional",  "status": "En escena",      "sector": "Autopista Federal" },
+        { "id": "P-215", "corp": "Policía Estatal",   "status": "Disponible",     "sector": "Periférico" },
+        { "id": "P-318", "corp": "Policía Municipal", "status": "Patrullando",    "sector": "Centro Histórico" },
+        { "id": "P-401", "corp": "Marina-SEMAR",      "status": "Alerta activa",  "sector": "Puerto Industrial" },
+        { "id": "P-523", "corp": "FGR-UEIDS",         "status": "Operativo",      "sector": "Nacional" }
+      ]
+    }
+  },
   "entries": [
     {
       "code": "RNID2026-001",

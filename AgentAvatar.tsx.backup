@@ -1,0 +1,79 @@
+﻿import React from "react";
+
+interface Props {
+  agent: { id: string; name: string; color: string; gender: "male" | "female"; icon: string; division: string; };
+  speaking: boolean;
+  size?: number;
+}
+
+export const AgentAvatar: React.FC<Props> = ({ agent, speaking, size = 80 }) => {
+  const isFemale = agent.gender === "female";
+  return (
+    <div style={{
+      width: size, height: size * 1.3,
+      position: "relative",
+      display: "flex", flexDirection: "column", alignItems: "center",
+      filter: speaking ? `drop-shadow(0 0 12px ${agent.color})` : "none",
+      transition: "filter 0.3s"
+    }}>
+      {/* Cabeza con casco policial */}
+      <svg width={size} height={size * 1.3} viewBox="0 0 100 130">
+        {/* Hombros con uniforme */}
+        <path d="M 15 130 Q 15 90 50 85 Q 85 90 85 130 Z" fill="#0a1520" stroke={agent.color} strokeWidth="2" />
+        {/* Insignia */}
+        <circle cx="65" cy="105" r="5" fill={agent.color} fillOpacity="0.8" />
+        <text x="65" y="108" fontSize="6" textAnchor="middle" fill="#000" fontWeight="bold">★</text>
+        
+        {/* Cuello */}
+        <rect x="42" y="72" width="16" height="15" fill="#c9a57a" />
+        
+        {/* Cabeza */}
+        <ellipse cx="50" cy="50" rx={isFemale ? 18 : 20} ry={isFemale ? 22 : 24} fill={isFemale ? "#e8c9a0" : "#d4a574"} />
+        
+        {/* Cabello femenino */}
+        {isFemale && (
+          <path d="M 28 45 Q 25 20 50 15 Q 75 20 72 45 Q 78 70 68 82 L 63 60 Q 50 55 37 60 L 32 82 Q 22 70 28 45 Z" fill="#1a0f0a" />
+        )}
+        
+        {/* Cabello masculino corto */}
+        {!isFemale && (
+          <path d="M 30 35 Q 30 20 50 18 Q 70 20 70 35 Q 65 28 50 28 Q 35 28 30 35 Z" fill="#1a0f0a" />
+        )}
+        
+        {/* Casco policial */}
+        <path d="M 28 35 Q 50 12 72 35 L 74 40 L 26 40 Z" fill="#0a1520" stroke={agent.color} strokeWidth="1.5" />
+        <rect x="26" y="38" width="48" height="4" fill={agent.color} />
+        
+        {/* Ojos */}
+        <circle cx="42" cy="48" r="2.5" fill="#000" />
+        <circle cx="58" cy="48" r="2.5" fill="#000" />
+        
+        {/* Boca animada */}
+        <ellipse cx="50" cy="62" rx={speaking ? 6 : 3} ry={speaking ? 3 : 1.5} fill="#8b2020" style={{ transition: "all 0.15s" }} />
+        
+        {/* Walkie-talkie */}
+        <rect x="80" y="105" width="8" height="18" rx="2" fill="#222" stroke={agent.color} strokeWidth="1" />
+        <rect x="82" y="100" width="4" height="8" rx="1" fill="#333" />
+        <circle cx="84" cy="97" r="1.5" fill={agent.color} />
+      </svg>
+      
+      {/* Nombre en placa metálica */}
+      <div style={{
+        position: "absolute",
+        bottom: -18,
+        background: "#0a1520",
+        border: `1px solid ${agent.color}`,
+        color: agent.color,
+        padding: "2px 8px",
+        fontSize: "8px",
+        fontFamily: "monospace",
+        fontWeight: "bold",
+        borderRadius: "3px",
+        letterSpacing: "1px",
+        whiteSpace: "nowrap"
+      }}>
+        {agent.name}
+      </div>
+    </div>
+  );
+};

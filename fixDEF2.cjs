@@ -1,0 +1,11 @@
+﻿const fs = require('fs');
+fs.copyFileSync('SabanaAnalyzer.tsx.bak_fix505b', 'SabanaAnalyzer.tsx');
+const lines = fs.readFileSync('SabanaAnalyzer.tsx', 'utf8').split('\n');
+lines[456] = lines[456].replace('rows.length === 0 ? (', 'rows.length === 0 && (');
+const sp = ' ';
+lines[482] = sp.repeat(28) + '{' + '[';
+lines[504] = sp.repeat(12) + ')' + ')' + '}';
+fs.writeFileSync('SabanaAnalyzer.tsx', lines.join('\n'));
+console.log('L457:', JSON.stringify(lines[456]));
+console.log('L483:', JSON.stringify(lines[482]));
+console.log('L505:', JSON.stringify(lines[504]));

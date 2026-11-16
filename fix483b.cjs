@@ -1,0 +1,1 @@
+﻿const fs=require("fs");const l=fs.readFileSync("SabanaAnalyzer.tsx","utf8").split("\n");l[482]=l[482].replace("{[\"","{[");fs.writeFileSync("SabanaAnalyzer.tsx",l.join("\n"));console.log("L483:",JSON.stringify(l[482]));

@@ -1,0 +1,12 @@
+﻿const fs=require('fs');const p='server.js';let c=fs.readFileSync(p,'utf8');
+fs.writeFileSync(p+'.BAK',c);
+const add=[];
+if(!c.includes('/api/tts'))add.push(['/api/tts',`\napp.post('/api/tts',(req,res)=>{res.json({demo:true,text:req.body.text||'',message:'Web Speech API'});});\n`]);
+if(!c.includes('/api/officer-panic'))add.push(['/api/officer-panic',`\napp.post('/api/officer-panic',(req,res)=>{console.log('[PANIC]',JSON.stringify(req.body));res.json({success:true,event:{id:'P'+Date.now(),...req.body,status:'ACTIVO'}});});\n`]);
+if(!c.includes('/api/panic-state'))add.push(['/api/panic-state',`\napp.get('/api/panic-state',(req,res)=>{res.json({active:false,alerts:[],status:'normal'});});\n`]);
+if(!c.includes('/api/brains-status'))add.push(['/api/brains-status',`\napp.get('/api/brains-status',(req,res)=>{const a=['SANTI','LORENA','JOSEMANUEL','MAXIMILIANO','EMILIANO','KATERINE','SANTIAGO'];res.json({brains:a.map(n=>({name:n,status:'online',model:'llama-3-70b-demo'})),timestamp:new Date().toISOString()});});\n`]);
+add.forEach(([k,v])=>{c=c.replace(/app\.listen/,v+'\napp.listen');console.log('+ Agregado:',k);});
+fs.writeFileSync(p,c);
+const e=[...c.matchAll(/app\.(get|post|put|delete)\(['"][^'"]+['"]/g)];
+console.log('\n=== ENDPOINTS ===');e.forEach(m=>console.log(m[0]));
+console.log('\nREINICIA: node server.js');

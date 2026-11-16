@@ -1,0 +1,528 @@
+﻿/**
+ * CitizenGuardian.tsx
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * MÃ³dulo ciudadano "GUARDIAN" â€” ProtecciÃ³n y vigilancia comunitaria.
+ *
+ * Funciones:
+ *  1. BotÃ³n Violeta 500m â€” simula alerta mesh a patrullas, ambulancias y Cruz Roja
+ *  2. VinculaciÃ³n IoT / CÃ¡mara Hogar â€” autorizaciÃ³n biomÃ©trica + WebRTC simulado
+ *  3. DetecciÃ³n de palabra clave ("Ayuda Santi Nexus") via Web Speech API
+ *  4. Captura de evidencia (screenshot del video) + envÃ­o al mando
+ *
+ * server.js INTOCABLE â€” todas las llamadas usan /api/officer-panic y /api/chat existentes.
+ */
+import React, { useState, useRef, useEffect, useCallback } from "react";
+
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+interface MeshUnit {
+  id:       string;
+  type:     "police" | "ambulance" | "cruz_roja" | "citizen";
+  name:     string;
+  distanceM: number;
+  eta:      string;
+  color:    string;
+  icon:     string;
+}
+
+interface AlertEvent {
+  id:        string;
+  type:      string;
+  ts:        string;
+  lat:       number;
+  lon:       number;
+  folio?:    string;
+  hash:      string;
+}
+
+interface KeywordHit {
+  phrase:  string;
+  ts:      string;
+  clip:    string;   // base64 screenshot evidence
+}
+
+// â”€â”€ Simulated mesh units within 500 m â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const MESH_UNITS: MeshUnit[] = [
+  { id: "P-042",   type: "police",     name: "Unidad SSPC P-042",          distanceM: 180, eta: "1 min 20 s",  color: "#c8a84b", icon: "ðŸš”" },
+  { id: "P-318",   type: "police",     name: "PolicÃ­a Municipal P-318",     distanceM: 340, eta: "2 min 40 s",  color: "#1e88e5", icon: "ðŸš“" },
+  { id: "AMB-01",  type: "ambulance",  name: "Ambulancia SAMU-01",          distanceM: 420, eta: "3 min 10 s",  color: "#00e676", icon: "ðŸš‘" },
+  { id: "CR-07",   type: "cruz_roja",  name: "Cruz Roja â€” Unidad 07",       distanceM: 490, eta: "3 min 50 s",  color: "#ff1744", icon: "ðŸ¥" },
+  { id: "CIT-12",  type: "citizen",    name: "Ciudadano Guardian #12",      distanceM: 95,  eta: "45 s",        color: "#9c27b0", icon: "ðŸ‘¤" },
+  { id: "CIT-33",  type: "citizen",    name: "Ciudadano Guardian #33",      distanceM: 210, eta: "1 min 40 s",  color: "#9c27b0", icon: "ðŸ‘¤" },
+];
+
+const KEYWORD_TRIGGERS = ["ayuda santi", "santi nexus", "auxilio santi", "cÃ³digo violeta", "emergencia santi"];
+
+// â”€â”€ SHA-256 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function sha256Hex(data: string): Promise<string> {
+  const buf    = new TextEncoder().encode(data);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// â”€â”€ CSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+if (typeof document !== "undefined") {
+  const s = document.createElement("style");
+  s.textContent = `
+    @keyframes guardian-pulse {
+      0%,100%{box-shadow:0 0 16px #a200ff60,0 0 40px #a200ff20;transform:scale(1)}
+      50%{box-shadow:0 0 40px #a200ff,0 0 80px #a200ff50;transform:scale(1.04)}
+    }
+    @keyframes mesh-in {
+      from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none}
+    }
+    @keyframes cam-scan {
+      0%{top:0;opacity:.9} 90%{opacity:.9} 100%{top:100%;opacity:0}
+    }
+    @keyframes keyword-flash {
+      0%,100%{background:rgba(255,23,68,0.06)} 50%{background:rgba(255,23,68,0.22)}
+    }
+    .guardian-fab { animation: guardian-pulse 1.8s ease-in-out infinite; }
+    .mesh-unit    { animation: mesh-in 0.3s ease-out both; }
+    .cam-scan-line {
+      position:absolute;left:0;width:100%;height:3px;
+      background:linear-gradient(90deg,transparent,#00ffcc,transparent);
+      animation:cam-scan 2.2s linear infinite;
+      pointer-events:none;z-index:5;
+    }
+    .keyword-alert { animation: keyword-flash 0.6s ease-in-out infinite; }
+  `;
+  document.head.appendChild(s);
+}
+
+// â”€â”€ IoT Camera Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const IotCameraPanel: React.FC<{
+  enabled:    boolean;
+  onEvidence: (hit: KeywordHit) => void;
+}> = ({ enabled, onEvidence }) => {
+  const videoRef   = useRef<HTMLVideoElement>(null);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const streamRef  = useRef<MediaStream | null>(null);
+  const recRef     = useRef<(() => void) | null>(null);
+  const [camError, setCamError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [lastHit,   setLastHit]   = useState<string | null>(null);
+
+  const captureEvidence = useCallback(async (phrase: string): Promise<string> => {
+    if (!canvasRef.current || !videoRef.current) return "";
+    const ctx = canvasRef.current.getContext("2d")!;
+    canvasRef.current.width  = videoRef.current.videoWidth  || 320;
+    canvasRef.current.height = videoRef.current.videoHeight || 240;
+    ctx.drawImage(videoRef.current, 0, 0);
+    // Stamp phrase on frame
+    ctx.fillStyle = "rgba(255,23,68,0.7)";
+    ctx.fillRect(0, canvasRef.current.height - 22, canvasRef.current.width, 22);
+    ctx.fillStyle = "#fff";
+    ctx.font      = "bold 11px monospace";
+    ctx.fillText(`ðŸ†˜ ${phrase.toUpperCase()} Â· ${new Date().toLocaleTimeString("es-MX")}`, 6, canvasRef.current.height - 7);
+    return canvasRef.current.toDataURL("image/jpeg", 0.75);
+  }, []);
+
+  const startKeywordWatch = useCallback(() => {
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR() as any;
+    rec.lang          = "es-MX";
+    rec.continuous    = true;
+    rec.interimResults = true;
+    rec.onresult = async (e: any) => {
+      const transcript = Array.from(e.results as any)
+        .map((r: any) => r[0].transcript.toLowerCase())
+        .join(" ");
+      const hit = KEYWORD_TRIGGERS.find((kw) => transcript.includes(kw));
+      if (hit) {
+        setLastHit(hit);
+        const clip = await captureEvidence(hit);
+        const hash = await sha256Hex(`KEYWORD|${hit}|${new Date().toISOString()}|${clip.slice(0, 64)}`);
+        onEvidence({ phrase: hit, ts: new Date().toISOString(), clip });
+        // Notify backend via chat (non-blocking)
+        fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agent: "SANTI",
+            prompt: `ALERTA DOMÃ“TICA: Palabra clave detectada "${hit}" en cÃ¡mara hogar. Hash evidencia: ${hash.slice(0,16)}. Genera protocolo de respuesta.`,
+            lang: "es",
+          }),
+        }).catch(() => {});
+      }
+    };
+    rec.onend = () => { if (enabled) { try { rec.start(); } catch {} } };
+    rec.start();
+    recRef.current = () => { try { rec.stop(); } catch {} };
+    setListening(true);
+  }, [enabled, captureEvidence, onEvidence]);
+
+  useEffect(() => {
+    if (!enabled) {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      recRef.current?.();
+      recRef.current = null;
+      setListening(false);
+      return;
+    }
+    // Start camera
+    navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false })
+      .then((stream) => {
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+        setCamError(null);
+        startKeywordWatch();
+      })
+      .catch((err) => setCamError(`Sin cÃ¡mara: ${err.message}`));
+
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      recRef.current?.();
+    };
+  }, [enabled, startKeywordWatch]);
+
+  if (!enabled) return null;
+
+  return (
+    <div style={{
+      marginTop: 16, padding: 14, borderRadius: 10,
+      background: "rgba(0,4,12,0.95)",
+      border: "1px solid rgba(0,255,200,0.18)",
+    }}>
+      <p style={{ color: "#00ffcc", fontSize: 9, letterSpacing: "2px", margin: "0 0 10px" }}>
+        ðŸ“¸ CÃMARA HOGAR â€” VINCULACIÃ“N IoT ACTIVA
+        {listening && <span style={{ color: "#00e676", marginLeft: 8 }}>ðŸŽ¤ ESCUCHANDOâ€¦</span>}
+      </p>
+
+      {camError ? (
+        <p style={{ color: "#ff6d00", fontSize: 9 }}>âš ï¸ {camError}</p>
+      ) : (
+        <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(0,255,200,0.25)", maxWidth: 320 }}>
+          <div className="cam-scan-line" />
+          <video ref={videoRef} muted playsInline style={{ width: "100%", display: "block", filter: "brightness(0.9) contrast(1.05)" }} />
+        </div>
+      )}
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      {lastHit && (
+        <div className="keyword-alert" style={{
+          marginTop: 10, padding: "8px 12px", borderRadius: 6,
+          border: "1px solid rgba(255,23,68,0.4)", fontSize: 9, color: "#ff6d00",
+        }}>
+          ðŸ†˜ PALABRA CLAVE DETECTADA: <strong>"{lastHit}"</strong><br />
+          Video de evidencia capturado. NotificaciÃ³n enviada al mando.
+        </div>
+      )}
+
+      <p style={{ fontSize: 8, color: "#2a5a4a", marginTop: 8, lineHeight: 1.6 }}>
+        Palabras clave activas: {KEYWORD_TRIGGERS.join(" Â· ")}<br />
+        Al detectarse: captura de frame â†’ hash SHA-256 â†’ notificaciÃ³n automÃ¡tica a C.M.O.
+      </p>
+    </div>
+  );
+};
+
+// â”€â”€ Main CitizenGuardian â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export const CitizenGuardian: React.FC = () => {
+  const [alertState,   setAlertState]   = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [folio,        setFolio]        = useState<string | null>(null);
+  const [alertMsg,     setAlertMsg]     = useState<string | null>(null);
+  const [meshDeployed, setMeshDeployed] = useState(false);
+  const [iotEnabled,   setIotEnabled]   = useState(false);
+  const [evidence,     setEvidence]     = useState<KeywordHit[]>([]);
+  const [alertLog,     setAlertLog]     = useState<AlertEvent[]>([]);
+  const [geoPos,       setGeoPos]       = useState<{ lat: number; lon: number } | null>(null);
+  const [locationErr,  setLocationErr]  = useState<string | null>(null);
+
+  // Acquire GPS on mount
+  useEffect(() => {
+    if (!navigator.geolocation) { setLocationErr("GeolocalizaciÃ³n no disponible."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => setGeoPos({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      (e) => {
+        setLocationErr(e.message);
+        // Fallback: C.M.O. location
+        setGeoPos({ lat: 18.9242, lon: -99.2216 });
+      }
+    );
+  }, []);
+
+  const handleMeshPanic = async () => {
+    setAlertState("sending");
+    const pos  = geoPos ?? { lat: 18.9242, lon: -99.2216 };
+    const ts   = new Date().toISOString();
+    const secret = (import.meta as any).env?.VITE_PANIC_SECRET ?? "";
+    try {
+      const res  = await fetch("/api/officer-panic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Panic-Secret": secret },
+        body: JSON.stringify({
+          officerId: `GUARDIAN-${Date.now()}`,
+          lat:       pos.lat,
+          lng:       pos.lon,
+          message:   "ðŸŸ£ ALERTA GUARDIAN â€” Red mesh ciudadana activada. Radio 500m.",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+
+      const hash = await sha256Hex(`MESH|${pos.lat}|${pos.lon}|${ts}|${data.folio}`);
+      setFolio(data.folio);
+      setAlertMsg(`Red mesh activada Â· ${MESH_UNITS.length} unidades notificadas Â· Folio: ${data.folio}`);
+      setAlertState("sent");
+      setMeshDeployed(true);
+      setAlertLog((l) => [{
+        id:    data.folio,
+        type:  "MESH_PANIC",
+        ts,
+        lat:   pos.lat,
+        lon:   pos.lon,
+        folio: data.folio,
+        hash,
+      }, ...l]);
+
+      // Simulate mesh ripple: units "confirm" one by one
+      MESH_UNITS.forEach((u, i) => {
+        setTimeout(() => {
+          setAlertLog((l) => [{
+            id:   `${u.id}-ACK`,
+            type: `ACK Â· ${u.name}`,
+            ts:   new Date().toISOString(),
+            lat:  pos.lat,
+            lon:  pos.lon,
+            hash: "",
+          }, ...l]);
+        }, (i + 1) * 800);
+      });
+
+    } catch (e: any) {
+      setAlertMsg(`Error: ${e.message}`);
+      setAlertState("error");
+    }
+  };
+
+  const handleEvidence = useCallback((hit: KeywordHit) => {
+    setEvidence((prev) => [hit, ...prev.slice(0, 9)]);
+  }, []);
+
+  return (
+    <div style={{
+      height: "100vh", display: "flex", flexDirection: "column",
+      backgroundColor: "#020810", color: "#e0ffe8", fontFamily: "monospace",
+      overflowY: "auto",
+    }}>
+      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div style={{
+        padding: "14px 20px", borderBottom: "1px solid rgba(162,0,255,0.2)",
+        background: "rgba(80,0,120,0.12)",
+      }}>
+        <h2 style={{ color: "#cc44ff", fontSize: 12, letterSpacing: "3px", margin: 0 }}>
+          ðŸ›¡ï¸ GUARDIAN â€” MÃ“DULO CIUDADANO DE PROTECCIÃ“N
+        </h2>
+        <p style={{ color: "#6a3a8a", fontSize: 8, margin: "3px 0 0", letterSpacing: "1px" }}>
+          RED MESH CIUDADANA Â· VINCULACIÃ“N IoT Â· DETECCIÃ“N DE VIOLENCIA
+          {geoPos && <span style={{ color: "#4a6a4a", marginLeft: 12 }}>ðŸ“ {geoPos.lat.toFixed(5)}Â°N / {Math.abs(geoPos.lon).toFixed(5)}Â°W</span>}
+          {locationErr && <span style={{ color: "#ff6d00", marginLeft: 12 }}>âš ï¸ GPS: {locationErr}</span>}
+        </p>
+      </div>
+
+      <div style={{ flex: 1, padding: "16px 20px", display: "flex", gap: 20, flexWrap: "wrap" }}>
+
+        {/* â”€â”€ LEFT: Panic + Mesh â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        <div style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* BotÃ³n Violeta */}
+          <div style={{
+            padding: 20, borderRadius: 12, textAlign: "center",
+            background: "rgba(80,0,120,0.15)",
+            border: "1px solid rgba(162,0,255,0.3)",
+          }}>
+            <p style={{ color: "#cc44ff", fontSize: 9, letterSpacing: "2px", margin: "0 0 14px" }}>
+              ðŸš¨ BOTÃ“N VIOLETA â€” ALERTA MESH 500 METROS
+            </p>
+            <button
+              onClick={handleMeshPanic}
+              disabled={alertState === "sending" || alertState === "sent"}
+              className={alertState === "idle" ? "guardian-fab" : ""}
+              style={{
+                padding: "18px 40px",
+                fontSize: 15, fontWeight: "bold", fontFamily: "monospace",
+                letterSpacing: "2px",
+                background: alertState === "sent"
+                  ? "rgba(0,230,118,0.2)"
+                  : "linear-gradient(135deg, #5500aa 0%, #a200ff 100%)",
+                color:  alertState === "sent" ? "#00e676" : "#fff",
+                border: `2px solid ${alertState === "sent" ? "#00e676" : "#cc44ff"}`,
+                borderRadius: "999px",
+                cursor: alertState === "sending" || alertState === "sent" ? "not-allowed" : "pointer",
+                width: "100%",
+              }}
+            >
+              {alertState === "idle"    ? "ðŸŸ£ ACTIVAR ALERTA MESH" :
+               alertState === "sending" ? "â³ ENVIANDOâ€¦"           :
+               alertState === "sent"    ? "âœ… RED ACTIVADA"         :
+                                          "âŒ ERROR â€” REINTENTAR"}
+            </button>
+            {alertMsg && (
+              <p style={{
+                marginTop: 10, fontSize: 9,
+                color: alertState === "sent" ? "#00e676" : "#ff6d00",
+                lineHeight: 1.6,
+              }}>
+                {alertMsg}
+              </p>
+            )}
+          </div>
+
+          {/* Mesh units */}
+          {meshDeployed && (
+            <div style={{
+              padding: 14, borderRadius: 10,
+              background: "rgba(0,4,12,0.9)",
+              border: "1px solid rgba(162,0,255,0.2)",
+            }}>
+              <p style={{ color: "#cc44ff", fontSize: 9, letterSpacing: "2px", margin: "0 0 10px" }}>
+                RED MESH â€” UNIDADES NOTIFICADAS (Radio 500m)
+              </p>
+              {MESH_UNITS.map((u, i) => (
+                <div
+                  key={u.id}
+                  className="mesh-unit"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "7px 10px", borderRadius: 7, marginBottom: 6,
+                    background: `${u.color}08`, border: `1px solid ${u.color}25`,
+                    animationDelay: `${i * 0.12}s`,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{u.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 9, color: u.color, fontWeight: "bold" }}>{u.name}</p>
+                    <p style={{ margin: 0, fontSize: 8, color: "#3a6a5a" }}>
+                      {u.distanceM}m Â· ETA: {u.eta}
+                    </p>
+                  </div>
+                  <div style={{
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: "#00e676", boxShadow: "0 0 6px #00e676",
+                  }} />
+                </div>
+              ))}
+              <p style={{ fontSize: 8, color: "#2a5a4a", marginTop: 8 }}>
+                Folio de alerta: <code style={{ color: "#cc44ff" }}>{folio}</code>
+              </p>
+            </div>
+          )}
+
+          {/* Alert log */}
+          {alertLog.length > 0 && (
+            <div style={{
+              padding: 12, borderRadius: 10, maxHeight: 200, overflowY: "auto",
+              background: "rgba(0,4,12,0.8)",
+              border: "1px solid rgba(0,255,200,0.08)",
+            }}>
+              <p style={{ color: "#00ffcc", fontSize: 8, letterSpacing: "2px", margin: "0 0 8px" }}>
+                LOG DE ALERTAS
+              </p>
+              {alertLog.map((a, i) => (
+                <div key={i} style={{ marginBottom: 4, fontSize: 8, color: "#4a8a6a", lineHeight: 1.5 }}>
+                  <span style={{ color: "#c8a84b" }}>{new Date(a.ts).toLocaleTimeString("es-MX")}</span>
+                  {" Â· "}{a.type}
+                  {a.folio && <> Â· Folio: <code style={{ color: "#cc44ff" }}>{a.folio}</code></>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* â”€â”€ RIGHT: IoT + Evidence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        <div style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* IoT toggle */}
+          <div style={{
+            padding: 14, borderRadius: 10,
+            background: iotEnabled ? "rgba(0,255,200,0.05)" : "rgba(0,4,12,0.8)",
+            border: `1px solid ${iotEnabled ? "rgba(0,255,200,0.25)" : "rgba(0,255,200,0.1)"}`,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div>
+                <p style={{ color: "#00ffcc", fontSize: 9, letterSpacing: "2px", margin: 0 }}>
+                  ðŸ  AUTORIZACIÃ“N BIOMÃ‰TRICA PARA HOGAR
+                </p>
+                <p style={{ color: "#2a5a4a", fontSize: 8, margin: "3px 0 0" }}>
+                  Activa: SANTI monitorea tu cÃ¡mara para detectar violencia
+                </p>
+              </div>
+              {/* Toggle switch */}
+              <div
+                onClick={() => setIotEnabled((v) => !v)}
+                style={{
+                  width: 44, height: 24, borderRadius: 12, cursor: "pointer",
+                  background: iotEnabled ? "#00ffcc" : "rgba(0,255,200,0.15)",
+                  border: "1px solid rgba(0,255,200,0.4)",
+                  position: "relative", transition: "background 0.2s", flexShrink: 0,
+                }}
+              >
+                <div style={{
+                  position: "absolute", top: 3,
+                  left: iotEnabled ? 22 : 3,
+                  width: 16, height: 16, borderRadius: "50%",
+                  background: iotEnabled ? "#020810" : "#00ffcc",
+                  transition: "left 0.2s",
+                  boxShadow: "0 0 4px rgba(0,0,0,0.3)",
+                }} />
+              </div>
+            </div>
+
+            <IotCameraPanel enabled={iotEnabled} onEvidence={handleEvidence} />
+          </div>
+
+          {/* Evidence clips */}
+          {evidence.length > 0 && (
+            <div style={{
+              padding: 12, borderRadius: 10,
+              background: "rgba(255,23,68,0.04)",
+              border: "1px solid rgba(255,23,68,0.2)",
+            }}>
+              <p style={{ color: "#ff6d00", fontSize: 9, letterSpacing: "2px", margin: "0 0 10px" }}>
+                ðŸŽ¬ EVIDENCIA CAPTURADA ({evidence.length})
+              </p>
+              {evidence.slice(0, 4).map((ev, i) => (
+                <div key={i} style={{ marginBottom: 10 }}>
+                  <p style={{ fontSize: 8, color: "#4a8a6a", margin: "0 0 4px" }}>
+                    ðŸ†˜ "{ev.phrase}" Â· {new Date(ev.ts).toLocaleTimeString("es-MX")}
+                  </p>
+                  {ev.clip && (
+                    <img
+                      src={ev.clip}
+                      alt="Evidencia"
+                      style={{ width: "100%", maxWidth: 280, borderRadius: 6, border: "1px solid rgba(255,23,68,0.3)" }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Safety info */}
+          <div style={{
+            padding: 12, borderRadius: 10,
+            background: "rgba(0,4,12,0.6)",
+            border: "1px solid rgba(0,255,200,0.06)",
+            fontSize: 8, color: "#2a4a3a", lineHeight: 1.8,
+          }}>
+            <p style={{ color: "#00ffcc", margin: "0 0 6px", fontSize: 9 }}>â„¹ï¸ PROTOCOLO GUARDIAN</p>
+            <p style={{ margin: 0 }}>
+              â€¢ La cÃ¡mara solo se activa con tu autorizaciÃ³n explÃ­cita.<br />
+              â€¢ NingÃºn video se almacena en servidores externos. Solo el frame de evidencia cuando se detecta la palabra clave.<br />
+              â€¢ El hash SHA-256 garantiza la integridad forense del clip de evidencia.<br />
+              â€¢ La alerta mesh notifica a patrullas reales en 500m mediante Telegram (requiere configuraciÃ³n).<br />
+              â€¢ Palabras clave: "{KEYWORD_TRIGGERS.join('", "')}"
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// [FIX v3.6] ErrorBoundary local para evitar removeChild global
+
+export default CitizenGuardian;
+

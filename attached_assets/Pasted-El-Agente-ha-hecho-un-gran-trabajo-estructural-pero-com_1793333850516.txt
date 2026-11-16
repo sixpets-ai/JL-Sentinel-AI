@@ -1,0 +1,34 @@
+El Agente ha hecho un gran trabajo estructural, pero como Arquitecto Jefe, necesito que corrijas los siguientes errores críticos para que el sistema sea nivel federal y funcional. NO publiques los cambios hasta que todo esté probado y funcional.
+
+### 1. ELIMINAR DATOS FALSOS Y HACERLO REAL
+- Busca en todo el código (especialmente en los componentes del mapa y el dashboard) y ELIMINA cualquier texto inventado como "Célula del Trébol", "CJNG", "Tren de Aragua" o números de teléfono falsos. 
+- El sistema debe mostrar estados vacíos ("Sin incidentes registrados", "Ingrese coordenadas") para que los datos reales sean inyectados por el usuario o la API. No inventes información.
+
+### 2. ARREGLAR EL MAPA (Quitar marca de agua)
+- Localiza el componente del mapa (Leaflet). Cambia el `TileLayer` estrictamente a: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` con la atribución correcta. Esto eliminará el error de "API KEY REQUIRED" de Carto.
+
+### 3. VOZ FEMENINA REAL Y CONVERSACIÓN FLUIDA
+- En el archivo donde se configura la `Web Speech API` (`SpeechSynthesis`), asegúrate de buscar una voz femenina en español. Usa este filtro: `voices.find(v => v.name.includes('Google español') || v.name.includes('Mónica') || v.name.includes('Paulina') || v.lang === 'es-MX')`. Si no se encuentra, usa un `pitch` más alto (1.2) para simular la voz femenina de KATERING.
+- **Conversación fluida:** Modifica los System Prompts de TODOS los agentes. Diles que actúen como humanos, que usen frases cortas, hagan preguntas de seguimiento (escucha activa) y usen técnicas de PNL (Programación Neurológica) para hacer sentir al usuario en confianza. Ejemplo: "Entiendo cómo te sientes, respira, estoy aquí para ayudarte. Cuéntame más sobre eso".
+
+### 4. BOTONES INTERACTIVOS (Narcomenudeo, Extorsión, Desaparición)
+- Estos botones no deben solo mostrar una lista de texto. Al hacer clic, deben abrir un **Modal (ventana emergente) o un formulario interactivo** con campos reales: 
+  - Nombre de la víctima (opcional/anonimizado).
+  - Fecha, hora y ubicación (usando GPS).
+  - Botón para "Adjuntar evidencia" (simular subida de archivo).
+  - Un botón de "Generar Reporte Oficial" que descargue un PDF o TXT con el formato legal (IPH, Cadena de Custodia).
+
+### 5. BOTÓN DE PÁNICO "CÓDIGO VIOLETA" (Emergencia Ciudadana)
+- Crea un botón flotante (FAB) en la esquina inferior derecha, siempre visible, de color Violeta o Rojo.
+- Al hacer clic:
+  1. Solicita la geolocalización GPS del usuario.
+  2. Genera un folio de emergencia (ej. `CV-2026-10-30-001`).
+  3. **Disparador de alarma:** Usa `navigator.vibrate([500, 200, 500])` y reproduce un sonido de sirena (puedes usar un archivo mp3 o un oscilador de audio de la Web Audio API) para disuadir al atacante.
+  4. Muestra un modal que diga: "Alerta masiva enviada a unidades policiales y ciudadanos en un radio de 500m. Protocolo de auxilio activado."
+
+### 6. INCLUSIÓN INDÍGENA (Mixteco y Náhuatl)
+- Agrega un selector de idioma (Dropdown) en la barra de navegación superior con las opciones: Español, Náhuatl y Mixteco.
+- Modifica los System Prompts de los agentes para que, si se selecciona Náhuatl o Mixteco, intenten responder en ese idioma o utilicen un tono más respetuoso y tradicional, adaptado a las comunidades indígenas.
+
+### EJECUCIÓN:
+Aplica estos cambios, guarda los archivos y vuelve a compilar. Pregúntame si necesitas que instale alguna librería extra para el manejo de PDFs o audio. No pares hasta que la app esté totalmente funcional y sin errores.

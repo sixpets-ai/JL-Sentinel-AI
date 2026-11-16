@@ -1,0 +1,54 @@
+// CommandView.tsx — SANTI NEXUS v4.1 — SIN DEPENDENCIAS EXTERNAS
+import React, { useState } from "react";
+
+export const CommandView: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [log, setLog] = useState<string[]>([]);
+  const [activo, setActivo] = useState(false);
+
+  const activarRojo = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/officer-panic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ officerId: "CMD-001", lat: 19.4326, lng: -99.1332, message: "Codigo Rojo" }),
+      });
+      const data = await res.json();
+      setActivo(true);
+      setLog(p => [`CODIGO ROJO — Folio: ${data.folio || "N/A"}`, ...p]);
+    } catch (e: any) {
+      setLog(p => [`ERROR: ${e.message}`, ...p]);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ padding: 24, background: "#0a0a0f", color: "#e0e0e0", minHeight: "100%", fontFamily: "Courier New" }}>
+      <div style={{ color: "#ff4444", fontSize: 20, fontWeight: "bold", marginBottom: 20 }}>
+        Mando Tactico — SANTI NEXUS
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <button onClick={activarRojo} disabled={loading}
+          style={{ padding: "14px 28px", background: activo ? "#ff000033" : "#ff444422",
+            border: "2px solid #ff4444", color: "#ff4444", borderRadius: 8,
+            cursor: "pointer", fontSize: 15, fontWeight: "bold" }}>
+          {loading ? "Enviando..." : "CODIGO ROJO"}
+        </button>
+        <button onClick={() => { setActivo(false); setLog(p => ["Alerta cancelada", ...p]); }}
+          style={{ padding: "14px 28px", background: "transparent",
+            border: "1px solid #555", color: "#888", borderRadius: 8, cursor: "pointer" }}>
+          Cancelar
+        </button>
+      </div>
+      <div style={{ background: "#111118", border: "1px solid #222", borderRadius: 8,
+        padding: 12, maxHeight: 300, overflowY: "auto" }}>
+        <div style={{ color: "#ff4444", fontSize: 12, marginBottom: 8 }}>LOG DE EVENTOS</div>
+        {log.length === 0
+          ? <div style={{ color: "#444", fontSize: 12 }}>Sin eventos</div>
+          : log.map((l, i) => <div key={i} style={{ fontSize: 12, color: "#aaa", marginBottom: 4 }}>{l}</div>)}
+      </div>
+    </div>
+  );
+};
+
+export default CommandView;

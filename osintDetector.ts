@@ -1,0 +1,27 @@
+// Hook para detección de OSINT en el chat
+export async function detectarOSINT(prompt: string): Promise<any | null> {
+  const p = prompt.toLowerCase();
+  const triggers = [
+    /busca.*(nombre|persona|sujeto|individuo)/,
+    /investiga.*(persona|sujeto|quien)/,
+    /osint.*(busca|investiga|analiza)/,
+    /dossier.*(sobre|de)/,
+    /quien es .+/,
+    /datos de .+/,
+    /info(rmacion)? sobre .+/,
+  ];
+  
+  const esOSINT = triggers.some(t => t.test(p));
+  if (!esOSINT) return null
+  
+  try {
+    const query = p.replace(/^(busca|investiga|osint|dossier|quien es|datos de|info(rmacion)? sobre)\s*/i, "").trim();
+    const res = await fetch("http://localhost:3001/api/osint/deep", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, tipo: "profundo" }),
+    });
+    if (!res.ok) return null
+    return await res.json();
+  } catch { return null; }
+}

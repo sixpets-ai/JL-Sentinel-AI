@@ -1,0 +1,82 @@
+=== DIAG NAVBAR + PUERTOS ===
+ROOT: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols
+
+--- BUSCAR 'Director de Marketing' ---
+
+--- BUSCAR fetch/api a puerto 5174 ---
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\server.js
+  L51: app.use(cors({ origin: ["http://localhost:5174","http://127.0.0.1:5174"] }));
+
+--- VITE.CONFIG ---
+Archivo: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\vite.config.js
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  // ðŸ”¥ ESCUDO PARA MAPBOX: Evita que Vite colapse al leer el paquete
+  optimizeDeps: {
+    exclude: ['react-map-gl'],
+    include: ['react-map-gl/mapbox']
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 5174,
+    strictPort: false,   // fall back to 5175, 5176â€¦ if 5174 is busy
+    allowedHosts: true,
+    // ðŸ”¥ PROXY INTACTO: Todo lo que vaya a /api se envÃ­a al backend Node (3001)
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
+});
+
+--- NAVBAR/HEADER COMPONENTE ---
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\artifacts\api-server\src\app.ts
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\artifacts\mockup-sandbox\src\components\ui\navigation-menu.tsx
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\artifacts\mockup-sandbox\src\components\ui\sidebar.tsx
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\artifacts\mockup-sandbox\src\App.tsx
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\artifacts\santi\src\components\ui\navigation-menu.tsx
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\artifacts\santi\src\components\ui\sidebar.tsx
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\artifacts\santi\src\App.tsx
+ARCHIVO: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\App.tsx
+  L8: import { AgenteAvatar }     from "./AgenteAvatar";
+  L19: | "sabana"  | "agentes" | "osint"
+  L42: { id: "agentes",   label: "Agentes IA",     icon: "ðŸ¤–",  color: "#ff4fc8", group: "field", gated: true },
+  L184: {!isAuth && view === "agentes"   && <AgenteAvatar />}
+
+--- App.tsx primeras 30 lineas ---
+Archivo: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\App.tsx
+import React, { useState } from "react";
+import { CitizenView }      from "./CitizenView";
+import { CommandView }      from "./CommandView";
+import { ForensicView }     from "./ForensicView";
+import { AuthBiometrico }   from "./AuthBiometrico";
+import type { SessionAuth } from "./AuthBiometrico";
+import { SabanaAnalyzer }   from "./SabanaAnalyzer";
+import { AgenteAvatar }     from "./AgenteAvatar";
+import { OSINTView }        from "./OSINTView";
+import { CitizenGuardian }  from "./CitizenGuardian";
+import { EducationView }    from "./EducationView";
+import { ApiStatusBar }     from "./ApiStatusBar";
+import { LinkAnalysisView } from "./LinkAnalysisView";
+import { CasesView }        from "./CasesView";
+import { TacticalMap3D }    from "./TacticalMap3D"; // Ã°Å¸â€Â¥ IMPORT 3D
+
+type View =
+  | "citizen" | "command" | "forensic"
+  | "sabana"  | "agentes" | "osint"
+  | "guardian" | "education" | "links" | "cases"
+  | "map3d"; // Ã°Å¸â€Â¥ NUEVO TIPO
+
+interface Tab {
+  id:      View;
+  label:   string;
+  icon:    string;
+  color:   string;
+  group:   "ops" | "intel" | "field";
+  gated?:  boolean;
+}

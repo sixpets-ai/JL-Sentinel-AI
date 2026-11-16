@@ -1,0 +1,25 @@
+Entiendo tu precaución sobre la responsabilidad legal de simular alertas reales. Tienes razón. Para evitar problemas, vamos a usar la arquitectura estándar de "Mock Services" (Servicios Simulados) para el prototipo de la hackathon. No estamos engañando a nadie; estamos demostrando el flujo de UX/UI a los jueces.
+
+Por favor, ejecuta estas instrucciones técnicas:
+
+1.  **BOTÓN DE PÁNICO (Código Violeta) con MOCK:**
+    - Crea el botón flotante en la interfaz.
+    - Al hacer clic, usa el GPS del navegador (`navigator.geolocation`) para obtener lat/lng reales.
+    - Muestra un flujo visual (animaciones de carga) que diga: "Obteniendo ubicación..." -> "Conectando con C5..." -> "Alerta enviada. Unidad más cercana en camino".
+    - Usa un `setTimeout` para simular una respuesta del servidor (Mock) después de 2 segundos. Muestra el folio generado en pantalla. Reproduce un sonido de sirena local.
+
+2.  **FORMULARIOS INTERACTIVOS (Narcomenudeo, Extorsión, Desaparición):**
+    - Cambia los textos planos por Modales (ventanas emergentes) con formularios reales (inputs de texto, selectores, carga de archivos).
+    - Cuando el usuario llene el formulario y le dé "Enviar", muestra una pantalla de éxito: "Reporte generado. Folio: XYZ. Cadena de custodia iniciada". (Esto también es un Mock en el frontend, pero la UI debe verse 100% funcional).
+
+3.  **DATOS Y MAPAS:**
+    - Elimina todo dato inventado de la pantalla principal. El mapa debe estar vacío (solo el mapa base de OpenStreetMap) hasta que el usuario ingrese una coordenada o simule un incidente.
+    - Quita la marca de agua "API KEY REQUIRED" cambiando el `TileLayer` a `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`.
+
+4.  **VOZ DE KATERING:**
+    - Revisa el código de `SpeechSynthesis`. Si no encuentra la voz femenina, fuerza el `pitch` a 1.5 (más agudo) para que suene como mujer.
+
+5.  **ENTORNO DE PRUEBAS:**
+    - En lugar de decir "Demostración Interactiva", pon un pequeño badge en la esquina superior que diga "BETA TEST - ENTORNO SEGURO". Esto da confianza a los jueces de que es un sistema serio en desarrollo.
+
+¡Adelante! Aplica estos cambios de "Mocking" en el frontend, asegúrate de que compile y avísame.

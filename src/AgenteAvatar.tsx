@@ -1,0 +1,404 @@
+// ══════════════════════════════════════════════════════════════════════════════
+// AgenteAvatar.tsx — SANTI NEXUS v4.3
+// Payload CORRECTO: POST /api/chat { agent: string, prompt: string }
+// POST /api/tts   { text: string, agent: string }
+// Psicología: voces cálidas, humanas, cercanas — ingeniería social táctica
+// Motor: Watson TTS → Web Speech ES-MX → auto-recovery
+// STT: continuo sin botón enviar
+// NUNCA "ERROR." — siempre respuesta de fallback con lógica
+// ══════════════════════════════════════════════════════════════════════════════
+import React, {
+  useState, useEffect, useCallback, useRef, memo
+} from "react";
+
+// ── PERFIL DE CADA AGENTE ─────────────────────────────────────────────────────
+const AGENTES: Record<string, {
+  nombre: string; genero: "m" | "f"; color: string; icono: string;
+  division: string; personalidad: string;
+}> = {
+  SANTI: {
+    nombre: "SANTI", genero: "m", color: "#00ff88", icono: "⚡",
+    division: "CMO Nacional",
+    personalidad: "Estratega. Habla con calma y confianza. Como un padre que sabe todo.",
+  },
+  LORENA: {
+    nombre: "LORENA", genero: "f", color: "#ff69b4", icono: "🌸",
+    division: "Central",
+    personalidad: "Empática. Cálida. Como una amiga de confianza que cuida de ti.",
+  },
+  JOSEMANUEL: {
+    nombre: "JOSÉ MANUEL", genero: "m", color: "#ffd700", icono: "🏅",
+    division: "Norte",
+    personalidad: "Directo. Resolutivo. Como un hermano mayor que te protege.",
+  },
+  MAXIMILIANO: {
+    nombre: "MAXI", genero: "m", color: "#ff6600", icono: "🔎",
+    division: "Sur",
+    personalidad: "Analítico. Preciso. Como un investigador que no deja hilos sueltos.",
+  },
+  EMILIANO: {
+    nombre: "EMILIANO", genero: "m", color: "#cc44ff", icono: "⚔️",
+    division: "Occidente",
+    personalidad: "Táctico. Firme. Como un compañero de operaciones que nunca falla.",
+  },
+  KATERINE: {
+    nombre: "KATERINE", genero: "f", color: "#ff4488", icono: "🦋",
+    division: "Oriente",
+    personalidad: "Perspicaz. Inteligente. Como una mentora que siempre tiene la respuesta.",
+  },
+  SANTIAGO: {
+    nombre: "SANTIAGO", genero: "m", color: "#44aaff", icono: "🛡️",
+    division: "Élite",
+    personalidad: "Protector. Leal. Como un escudo personal que nunca te abandona.",
+  },
+};
+
+type AgenteId = keyof typeof AGENTES;
+
+// ── PITCH Y RITMO POR AGENTE ───────────────────────────────────────────────────
+// Lorena=1.4 (alta, cálida) | Katerine=1.3 (femenina, inteligente)
+// Hombres=0.85 (grave, autoridad) | Rate ajustado por personalidad
+const PITCH: Record<string, number> = {
+  LORENA: 1.05, KATERINE: 1.05,
+  SANTI: 0.85, JOSEMANUEL: 0.85, MAXIMILIANO: 0.85,
+  EMILIANO: 0.85, SANTIAGO: 0.85,
+};
+const RATE: Record<string, number> = {
+  LORENA: 0.95,     // fluida, cálida
+  KATERINE: 0.93,   // pausada, inteligente
+  SANTI: 0.88,      // pausado, autoridad
+  JOSEMANUEL: 0.9,  // directo
+  MAXIMILIANO: 0.87, // analítico, deliberado
+  EMILIANO: 0.92,   // ágil, táctico
+  SANTIAGO: 0.88,   // firme, protector
+};
+
+// ── SALUDOS INICIALES POR AGENTE (psicología táctica) ────────────────────────
+const SALUDOS: Record<string, string> = {
+  SANTI: "Sistema SANTI NEXUS en línea. CMO Nacional activo. Estoy aquí, dime en qué te ayudo.",
+  LORENA: "Lorena en línea. Estás en buenas manos. ¿Qué necesitas hoy?",
+  JOSEMANUEL: "José Manuel activo. Norte operativo. Dime qué pasa y lo resolvemos.",
+  MAXIMILIANO: "Maxi conectado. Sur bajo análisis. Tengo todos los datos, ¿qué quieres saber?",
+  EMILIANO: "Emiliano en posición. Occidente activo. Lista para cualquier operativo.",
+  KATERINE: "Katerine disponible. Oriente monitoreado. ¿En qué puedo ayudarte?",
+  SANTIAGO: "Santiago de guardia. Élite activo. Aquí estoy, como siempre.",
+};
+
+// ── FALLBACKS LOCALES (NUNCA ERROR.) ─────────────────────────────────────────
+const FALLBACKS: Record<string, string[]> = {
+  SANTI: [
+    "Conexión limitada al momento. Dame un segundo y lo proceso.",
+    "Estoy aquí. Sistema en modo resiliente. ¿Repites la consulta?",
+    "SANTI activo en modo local. ¿En qué te apoyo?",
+  ],
+  LORENA: [
+    "Lorena aquí. Conexión ajustando. No te preocupes, seguimos.",
+    "Estoy contigo. Dame un momento, el sistema se recupera solo.",
+    "Todo bien. Lorena en modo local, ¿me repites?",
+  ],
+  JOSEMANUEL: ["José Manuel aquí. Sistema recuperándose. ¿Qué necesitas?", "Activo en local. Dime."],
+  MAXIMILIANO: ["Maxi procesando en local. ¿Repites la consulta?", "Sistema resiliente activo. Continúa."],
+  EMILIANO: ["Emiliano en local. Operativo continúa. ¿Qué sigue?", "Modo resiliente. Estoy aquí."],
+  KATERINE: ["Katerine disponible en local. ¿Continuamos?", "Sistema ajustando. Sigo aquí contigo."],
+  SANTIAGO: ["Santiago de guardia, modo local. ¿Qué necesitas?", "Protección activa. Dime."],
+};
+
+const getFallback = (agente: string): string => {
+  const lista = FALLBACKS[agente] ?? ["Sistema activo. ¿En qué te ayudo?"];
+  return lista[Math.floor(Math.random() * lista.length)];
+};
+
+// ── CACHÉ DE VOCES (singleton global) ────────────────────────────────────────
+let _voiceCache: SpeechSynthesisVoice[] = [];
+const refreshVoices = () => { _voiceCache = window.speechSynthesis?.getVoices() ?? []; };
+if (typeof window !== "undefined") {
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
+}
+
+const pickVoice = (genero: "m" | "f"): SpeechSynthesisVoice | null => {
+  const es = _voiceCache.filter(v => v.lang.startsWith("es"));
+  if (!es.length) return null;
+  // Mapa de voz por agente - cada uno tiene su propia voz unica
+  const VOZ_AGENTE: Record<string, number> = {
+    LORENA:       0, // Google Natural 1 - mas aguda, femenina
+    KATERINE:     1, // Google Natural 2 - segunda femenina
+    SANTI:        2, // Google Natural 3 - grave con pitch 0.85
+    JOSEMANUEL:   3, // Google Natural 4 - autoridad
+    MAXIMILIANO:  4, // Google Natural 5 - analitico
+    EMILIANO:     5, // Chrome OS 1 - agil
+    SANTIAGO:     6, // Chrome OS 2 - firme
+  };
+  const naturales = es.filter(v => v.name.includes("Natural"));
+  const chromeos  = es.filter(v => v.name.includes("Chrome OS"));
+  const todas = [...naturales, ...chromeos, ...es];
+  const idx = VOZ_AGENTE[nombre] ?? (genero === "f" ? 0 : 2);
+  return todas[idx] || es[0] || null;
+};
+
+// ── MOTOR DE VOZ BLINDADO ─────────────────────────────────────────────────────
+// Capa A → Watson TTS (payload: { text, agent } correcto)
+// Capa B → Web Speech API con pitch/rate diferenciado
+// Capa C → Watchdog auto-recovery (bug Chrome)
+const vozLocal = (texto: string, agente: string, genero: "m" | "f") => {
+  const nombre = agente.replace(/\s/g, "").toUpperCase();
+  try { window.speechSynthesis.cancel(); } catch {}
+
+  setTimeout(() => {
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang   = "es-MX";
+    u.pitch  = PITCH[nombre] ?? (genero === "f" ? 1.3 : 0.85);
+    u.rate   = RATE[nombre]  ?? 0.9;
+    u.volume = 1.0;
+    const voz = pickVoice(genero);
+    if (voz) u.voice = voz;
+
+    // Watchdog: auto-recovery si Chrome se congela
+    let wd = 0;
+    const timer = setInterval(() => {
+      if (!window.speechSynthesis.speaking) { clearInterval(timer); return; }
+      if (++wd > 15) { clearInterval(timer); window.speechSynthesis.cancel(); }
+    }, 1000);
+    u.onend = u.onerror = () => clearInterval(timer);
+    try { window.speechSynthesis.speak(u); } catch { clearInterval(timer); }
+  }, 120);
+};
+
+const motorVoz = async (texto: string, agente: string, genero: "m" | "f") => {
+  if (!texto?.trim()) return;
+
+  // CAPA A — Watson TTS (payload CORRECTO: { text, agent })
+  try {
+    const r = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: texto, agent: agente }),  // ← payload correcto
+      signal: AbortSignal.timeout(4000),
+    });
+    if (r.ok) {
+      const blob = await r.blob();
+      if (blob.size > 200) {
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        audio.onerror = () => { URL.revokeObjectURL(url); vozLocal(texto, agente, genero); };
+        try { await audio.play(); return; } catch {}
+      }
+    }
+  } catch {}
+
+  // CAPA B — Web Speech
+  vozLocal(texto, agente, genero);
+};
+
+// ── STT CONTINUO ──────────────────────────────────────────────────────────────
+const useSpeechRecognition = (onResult: (t: string) => void, activo: boolean) => {
+  const recRef = useRef<any>(null);
+  useEffect(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR || !activo) return;
+    const rec = new SR();
+    rec.lang = "es-MX";
+    rec.continuous = true;
+    rec.interimResults = false;
+    recRef.current = rec;
+    rec.onresult = (e: any) => {
+      const t = e.results[e.results.length - 1][0].transcript.trim();
+      if (t.length > 2) onResult(t);
+    };
+    rec.onerror = (e: any) => { if (e.error !== "no-speech") console.warn("[STT]", e.error); };
+    rec.onend = () => { try { recRef.current?.start(); } catch {} };
+    try { rec.start(); } catch {}
+    return () => { recRef.current = null; try { rec.stop(); } catch {} };
+  }, [activo, onResult]);
+};
+
+// ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
+interface Props { agenteId?: AgenteId; }
+
+export const AgenteAvatar = memo(({ agenteId = "SANTI" }: Props) => {
+  const cfg = AGENTES[agenteId] ?? AGENTES.SANTI;
+  const [mensajes, setMensajes] = useState<{ rol: "user" | "agent"; texto: string }[]>([]);
+  const [input, setInput]       = useState("");
+  const [cargando, setCargando] = useState(false);
+  const [sttActivo, setSttActivo] = useState(false);
+  const [silenciado, setSilenciado] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [mensajes]);
+
+  // Saludo inicial con voz
+  useEffect(() => {
+    const saludo = SALUDOS[agenteId] ?? `${cfg.nombre} en línea.`;
+    setMensajes([{ rol: "agent", texto: saludo }]);
+    setTimeout(() => { if (!silenciado) motorVoz(saludo, cfg.nombre, cfg.genero); }, 600);
+  }, [agenteId]); // eslint-disable-line
+
+  const enviarMensaje = useCallback(async (texto: string) => {
+    if (!texto.trim() || cargando) return;
+    const prompt = texto.trim();
+    setInput("");
+    setMensajes(prev => [...prev, { rol: "user", texto: prompt }]);
+    setCargando(true);
+    setMensajes(prev => [...prev, { rol: "agent", texto: "..." }]);
+
+    try {
+      const r = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // ← PAYLOAD CORRECTO para server.js
+        body: JSON.stringify({ agent: agenteId, prompt }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const data = await r.json();
+      const respuesta = data.response ?? data.text ?? data.message ?? getFallback(agenteId);
+
+      setMensajes(prev => {
+        const n = [...prev];
+        n[n.length - 1] = { rol: "agent", texto: respuesta };
+        return n;
+      });
+      if (!silenciado) await motorVoz(respuesta, cfg.nombre, cfg.genero);
+    } catch {
+      const fb = getFallback(agenteId);
+      setMensajes(prev => {
+        const n = [...prev];
+        n[n.length - 1] = { rol: "agent", texto: fb };
+        return n;
+      });
+      if (!silenciado) motorVoz(fb, cfg.nombre, cfg.genero);
+    } finally {
+      setCargando(false);
+    }
+  }, [agenteId, cfg, cargando, silenciado]);
+
+  const handleSTT = useCallback((t: string) => enviarMensaje(t), [enviarMensaje]);
+  useSpeechRecognition(handleSTT, sttActivo);
+
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", height: "100%",
+      background: "#080d18", color: "#e2e8f0", fontFamily: "'Courier New', monospace",
+    }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: "14px",
+        padding: "14px 18px", borderBottom: `1px solid ${cfg.color}33`,
+        background: "#0b1120",
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%",
+          border: `2px solid ${cfg.color}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "1.4rem", background: `${cfg.color}11`,
+          boxShadow: `0 0 14px ${cfg.color}55`,
+          animation: "pulse 3s ease-in-out infinite",
+        }}>
+          {cfg.icono}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: cfg.color, fontWeight: "bold", fontSize: "1rem", letterSpacing: "0.1em" }}>
+            {cfg.nombre}
+          </div>
+          <div style={{ color: "#475569", fontSize: "0.72rem" }}>
+            DIVISIÓN: {cfg.division} · {cfg.personalidad.split(".")[0]}
+          </div>
+        </div>
+        <button
+          onClick={() => setSilenciado(s => !s)}
+          style={{
+            background: "transparent", border: `1px solid ${silenciado ? "#ef444466" : "#22c55e66"}`,
+            color: silenciado ? "#ef4444" : "#22c55e",
+            borderRadius: "6px", padding: "5px 12px", cursor: "pointer", fontSize: "0.78rem",
+          }}
+        >
+          {silenciado ? "🔇 SILENCIO" : "🔊 VOZ"}
+        </button>
+      </div>
+
+      {/* Mensajes */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
+        {mensajes.map((m, i) => (
+          <div key={i} style={{
+            alignSelf: m.rol === "user" ? "flex-end" : "flex-start",
+            maxWidth: "82%",
+            background: m.rol === "user" ? "#1e3a5f" : "#111827",
+            border: `1px solid ${m.rol === "user" ? "#3b82f644" : cfg.color + "33"}`,
+            borderRadius: m.rol === "user" ? "12px 12px 2px 12px" : "2px 12px 12px 12px",
+            padding: "10px 14px", fontSize: "0.83rem", lineHeight: 1.6,
+          }}>
+            {m.rol === "agent" && m.texto !== "..." && (
+              <span style={{ color: cfg.color, fontWeight: "bold", marginRight: "6px", fontSize: "0.75rem" }}>
+                {cfg.nombre}
+              </span>
+            )}
+            {m.texto === "..." ? (
+              <span style={{ color: cfg.color, letterSpacing: "0.3em" }}>● ● ●</span>
+            ) : m.texto}
+          </div>
+        ))}
+        <div ref={endRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{
+        padding: "10px 14px", borderTop: "1px solid #1e293b",
+        display: "flex", gap: "8px", background: "#0b1120",
+      }}>
+        <button
+          onClick={() => setSttActivo(s => !s)}
+          title={sttActivo ? "Micrófono activo — clic para detener" : "Activar micrófono continuo"}
+          style={{
+            background: sttActivo ? "#5b21b6" : "#1e293b",
+            color: sttActivo ? "#c4b5fd" : "#64748b",
+            border: `1px solid ${sttActivo ? "#7c3aed" : "#334155"}`,
+            borderRadius: "6px", padding: "8px 12px", cursor: "pointer", fontSize: "1rem",
+            boxShadow: sttActivo ? "0 0 10px #7c3aed66" : "none",
+            transition: "all 0.2s",
+          }}
+        >
+          {sttActivo ? "🎙️" : "🎤"}
+        </button>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensaje(input); } }}
+          placeholder={`Consulta táctica a ${cfg.nombre}...`}
+          disabled={cargando}
+          style={{
+            flex: 1, background: "#1e293b", color: "#e2e8f0",
+            border: "1px solid #334155", borderRadius: "6px",
+            padding: "8px 12px", fontSize: "0.83rem", outline: "none",
+            transition: "border-color 0.2s",
+          }}
+          onFocus={e => { e.target.style.borderColor = cfg.color + "88"; }}
+          onBlur={e => { e.target.style.borderColor = "#334155"; }}
+        />
+        <button
+          onClick={() => enviarMensaje(input)}
+          disabled={cargando || !input.trim()}
+          style={{
+            background: (cargando || !input.trim()) ? "#0f172a" : "#14532d",
+            color: (cargando || !input.trim()) ? "#334155" : "#22c55e",
+            border: `1px solid ${(cargando || !input.trim()) ? "#1e293b" : "#22c55e44"}`,
+            borderRadius: "6px", padding: "8px 16px",
+            cursor: (cargando || !input.trim()) ? "not-allowed" : "pointer",
+            fontWeight: "bold", fontSize: "0.83rem", transition: "all 0.2s",
+          }}
+        >
+          {cargando ? "●●●" : "ENVIAR"}
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 0 14px ${cfg.color}55; }
+          50%       { box-shadow: 0 0 24px ${cfg.color}99; }
+        }
+      `}</style>
+    </div>
+  );
+});
+
+AgenteAvatar.displayName = "AgenteAvatar";
+export default AgenteAvatar;

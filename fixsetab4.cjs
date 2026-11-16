@@ -1,0 +1,1 @@
+const fs=require("fs");const f="C:/Users/Wyse/Desktop/J-L-Sentinel-AI/05_Respaldo_Codigo/Intelligent-Patrols/SabanaAnalyzer.tsx";let lines=fs.readFileSync(f,"utf8").split("\n");lines=lines.filter((l,i)=>!(i>=293 && l.trim().startsWith("setTab")));fs.writeFileSync(f,lines.join("\n"),"utf8");console.log("ORPHAN setTab REMOVED, lines now:",lines.length);

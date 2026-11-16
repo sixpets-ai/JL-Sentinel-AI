@@ -1,0 +1,23 @@
+Actúa como un Ingeniero de Software Principal experto en React, Vite y PWA. Vamos a llevar este proyecto a un nivel de producción impecable. Necesito que ejecutes las siguientes tareas sin dejar ningún error, advertencia ni cabos sueltos:
+
+1. **CERO ERRORES DE TYPESCRIPT**: 
+   - Tienes 4 advertencias en componentes UI (`command`, `drawer`, `input-otp`, `spinner`). Revisa los archivos de esos componentes y corrige la tipificación de TypeScript. El objetivo es que `tsc --noEmit` pase con 0 errores.
+
+2. **MAPA RESPONSIVO Y TÁCTIL (Móvil/Tablet/TV)**:
+   - Asegúrate de que el `TacticalMap` (Leaflet) tenga `zoomControl={true}` y sea completamente táctil (pinch-to-zoom).
+   - Asegúrate de que el botón de "Código Violeta" se adapte al tamaño de la pantalla (móvil, tablet, monitor).
+
+3. **MODO OFFLINE (PWA - Progressive Web App)**:
+   - Instala `vite-plugin-pwa`.
+   - Configura el archivo `vite.config.ts` para generar el Service Worker y el `manifest.json`.
+   - La app debe poder instalarse en Android/iOS y funcionar (al menos la interfaz visual y el botón de pánico) sin conexión a internet. Guarda los datos en caché.
+
+4. **SOPORTE MULTILINGÜE (Global e Indígena)**:
+   - Crea un selector de idioma en la interfaz (arriba a la derecha).
+   - Idiomas requeridos: Español, Inglés, Francés, Alemán, Chino Mandarín, Ruso, Náhuatl, Maya, Mixteco, Zapoteco, Totonaco.
+   - *Nota técnica para la IA*: Para los idiomas globales, usa la API de Gemini enviando el parámetro del idioma seleccionado. Para los dialectos indígenas, si el modelo de voz (SpeechSynthesis) no tiene la voz nativa, la IA debe traducir el texto y leerlo en español con acento y palabras adaptadas, explicando que es una traducción asistida.
+
+5. **OPTIMIZACIÓN DE VOZ Y ACCESIBILIDAD**:
+   - Asegúrate de que el reconocimiento de voz (`SpeechRecognition`) y la síntesis (`SpeechSynthesis`) manejen correctamente los códigos de idioma (ej. 'es-MX', 'en-US', 'zh-CN', 'ru-RU').
+
+Ejecuta estos cambios de forma modular, instala las dependencias necesarias, y asegúrate de que la app compile perfectamente. No me des por terminado hasta que el proyecto sea un tanque a prueba de balas.

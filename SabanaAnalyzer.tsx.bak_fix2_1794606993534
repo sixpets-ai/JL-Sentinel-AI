@@ -1,0 +1,704 @@
+import React, { useState, useCallback, useMemo, Suspense } from "react";
+import { MapContainer, TileLayer, Circle, Polyline, Tooltip, Marker } from "react-leaflet";
+import L from "leaflet";
+
+// ============================================================================
+// MÓDULO: ANALIZADOR DE SÁBANA TELEFÓNICA Y REDES (i2)
+// Autor: J&L Sentinel AI
+// Descripción: Procesa archivos CDR, extrae zonas de confort, genera grafos
+//              de fuerza y traza topografía en el mapa.
+// ============================================================================
+
+// ── 1. TIPOS E INTERFACES DE DATOS ──────────────────────────────────────────
+export interface SabanaRow {
+  phone:     string;
+  date:      string;
+  time:      string;
+  duration:  number;
+  type:      string; // DATOS / VOZ / SMS
+  imei:      string;
+  cellId:    string;
+  lac:       string;
+  lat:       number;
+  lon:       number;
+  azimuth:   number;
+  address?:  string;
+  alias?:    string;
+}
+
+interface ZonaConfort {
+  label:      string;  // "DOMICILIO PROBABLE" | "TRABAJO PROBABLE"
+  lat:        number;
+  lon:        number;
+  frequency:  number;
+  hours:      string;
+  color:      string;
+}
+
+interface GraphNode { id: string; label: string; color: string; group: string; val: number }
+interface GraphLink { source: string; target: string; value: number; color: string }
+
+// ── 2. FUNCIONES MATEMÁTICAS Y GEOMÉTRICAS (TOPOGRAFÍA) ──────────────────────
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function bearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+function offsetPoint(lat: number, lon: number, bearingDeg: number, distM: number): [number, number] {
+  const R = 6371000;
+  const d = distM / R;
+  const brRad = bearingDeg * Math.PI / 180;
+  const lat1 = lat * Math.PI / 180;
+  const lon1 = lon * Math.PI / 180;
+  const lat2 = Math.asin(Math.sin(lat1)*Math.cos(d) + Math.cos(lat1)*Math.sin(d)*Math.cos(brRad));
+  const lon2 = lon1 + Math.atan2(Math.sin(brRad)*Math.sin(d)*Math.cos(lat1), Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
+  return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
+}
+
+// ── 3. ALGORITMO DE ZONAS DE CONFORT (DOMICILIO / TRABAJO) ──────────────────
+// Agrupa coordenadas en una cuadrícula de ~50 metros. Las frecuencias
+// nocturnas (22:00-07:59) infieren el domicilio. Las diurnas el trabajo.
+function calcZonasConfort(rows: SabanaRow[]): ZonaConfort[] {
+  if (!rows.length) return [];
+
+  const GRID = 0.00045; // ~50m
+  const snap = (v: number) => Math.round(v / GRID) * GRID;
+
+  const cellMap = new Map<string, { lat: number; lon: number; night: number; day: number }>();
+  
+  for (const r of rows) {
+    if (!r.lat || !r.lon) continue;
+    const key = `${snap(r.lat).toFixed(5)},${snap(r.lon).toFixed(5)}`;
+    const hour = parseInt((r.time ?? "00:00").split(":")[0], 10);
+    const isNight = hour >= 22 || hour < 8;
+    const prev = cellMap.get(key) ?? { lat: r.lat, lon: r.lon, night: 0, day: 0 };
+    prev.night += isNight ? 1 : 0;
+    prev.day   += isNight ? 0 : 1;
+    cellMap.set(key, prev);
+  }
+
+  const cells = Array.from(cellMap.values());
+  const topNight = cells.sort((a,b) => b.night - a.night)[0];
+  const topDay   = cells.sort((a,b) => b.day   - a.day  )[0];
+
+  const result: ZonaConfort[] = [];
+  if (topNight && topNight.night > 0) {
+    result.push({
+      label: "DOMICILIO PROBABLE",
+      lat: topNight.lat, lon: topNight.lon,
+      frequency: topNight.night,
+      hours: "22:00 – 07:59",
+      color: "#00ffcc",
+    });
+  }
+  if (topDay && topDay.day > 0) {
+    result.push({
+      label: "TRABAJO PROBABLE",
+      lat: topDay.lat, lon: topDay.lon,
+      frequency: topDay.day,
+      hours: "08:00 – 17:59",
+      color: "#c8a84b",
+    });
+  }
+  return result;
+}
+
+// ── 4. CONSTRUCTOR DE GRAFO (ESTILO IBM i2) ─────────────────────────────────
+// Cruza números de teléfono con IMEIs y alias para crear la red técnica.
+function buildGraph(rows: SabanaRow[]): { nodes: GraphNode[]; links: GraphLink[] } {
+  const phones = new Map<string, { count: number; alias?: string }>();
+  const imeis  = new Map<string, number>();
+  const edges  = new Map<string, number>();
+
+  for (const r of rows) {
+    const key = r.phone;
+    const prev = phones.get(key) ?? { count: 0, alias: r.alias };
+    prev.count++;
+    phones.set(key, prev);
+
+    if (r.imei) {
+      imeis.set(r.imei, (imeis.get(r.imei) ?? 0) + 1);
+    }
+
+    if (r.imei && r.phone) {
+      const ek = `${r.phone}||${r.imei}`;
+      edges.set(ek, (edges.get(ek) ?? 0) + 1);
+    }
+  }
+
+  const nodes: GraphNode[] = [];
+  const links: GraphLink[] = [];
+
+  phones.forEach(({ count, alias }, phone) => {
+    nodes.push({ id: phone, label: alias ?? phone, color: "#00e5ff", group: "phone", val: Math.log2(count + 2) * 4 });
+  });
+  imeis.forEach((count, imei) => {
+    nodes.push({ id: imei, label: `IMEI:${imei.slice(-6)}`, color: "#c8a84b", group: "imei", val: Math.log2(count + 2) * 3 });
+  });
+  edges.forEach((count, key) => {
+    const [src, tgt] = key.split("||");
+    links.push({ source: src, target: tgt, value: count, color: "#ff6d0060" });
+  });
+
+  return { nodes, links };
+}
+
+// ── 5. ICONOS Y PARSEO DE EXCEL ─────────────────────────────────────────────
+const cellIcon = L.divIcon({
+  className: "",
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+  html: `<div style="width:20px;height:20px;border-radius:50%;background:rgba(0,255,200,0.15);border:1.5px solid rgba(0,255,200,0.6);display:flex;align-items:center;justify-content:center;font-size:10px;">📡</div>`,
+});
+
+async function parseXlsx(file: File): Promise<SabanaRow[]> {
+  let XLSX: any;
+  try {
+    XLSX = await import("xlsx");
+  } catch {
+    throw new Error("Librería 'xlsx' no instalada. Ejecuta: npm install xlsx");
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb   = XLSX.read(data, { type: "array" });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const json: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+        const rows: SabanaRow[] = json.map((r: any) => {
+          const kv = (keys: string[], fallback: string) =>
+            (keys.find((k) => r[k] !== undefined) && r[keys.find((k) => r[k] !== undefined)!]) ?? fallback;
+          return {
+            phone:    String(kv(["telefono","Telefono","phone","Phone","numero","Numero"], "")),
+            date:     String(kv(["fecha","Fecha","date","Date"], "")),
+            time:     String(kv(["hora","Hora","time","Time"], "00:00")),
+            duration: Number(kv(["duracion","Duracion","duration","Duration"], 0)),
+            type:     String(kv(["tipo","Tipo","type","Type"], "DATOS")),
+            imei:     String(kv(["imei","IMEI","Imei"], "")),
+            cellId:   String(kv(["cellid","CellId","CellID","celda","Celda"], "")),
+            lac:      String(kv(["lac","LAC"], "")),
+            lat:      parseFloat(String(kv(["lat","Lat","latitud","Latitud","latitude"], "0"))) || 0,
+            lon:      parseFloat(String(kv(["lon","Lon","lng","Lng","longitud","Longitud","longitude"], "0"))) || 0,
+            azimuth:  parseFloat(String(kv(["azimuth","Azimuth","azimut","Azimut"], "0"))) || 0,
+            address:  String(kv(["direccion","Direccion","address","Address"], "")),
+            alias:    String(kv(["alias","Alias"], "")),
+          };
+        }).filter((r) => r.phone);
+
+        resolve(rows);
+      } catch (err: any) {
+        reject(new Error(`Error parseando Excel: ${err.message}`));
+      }
+    };
+    reader.onerror = () => reject(new Error("Error leyendo archivo"));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── 6. GRÁFICO DE RESPALDO (SVG) Y CARGA DINÁMICA DE FORCE GRAPH ────────────
+const FallbackGraph: React.FC<{ nodes: GraphNode[]; links: GraphLink[] }> = ({ nodes, links }) => {
+  if (!nodes.length) return <p style={{ color: "#3a6a5a", fontSize: 9, padding: 12 }}>Sin datos de grafo. Sube una sábana.</p>;
+  const W = 540, H = 340;
+  const positioned = nodes.map((n, i) => {
+    const angle = (2 * Math.PI * i) / nodes.length;
+    const r = Math.min(W, H) / 2 - 32;
+    return { ...n, cx: W/2 + r * Math.cos(angle), cy: H/2 + r * Math.sin(angle) };
+  });
+  const posMap = new Map(positioned.map((n) => [n.id, n]));
+
+  return (<>
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ background: "rgba(0,4,12,0.98)", borderRadius: 8 }}>
+      {links.map((l, i) => {
+        const s = posMap.get(String(l.source));
+        const t = posMap.get(String(l.target));
+        if (!s || !t) return null
+        return <line key={i} x1={s.cx} y1={s.cy} x2={t.cx} y2={t.cy} stroke={l.color} strokeWidth={Math.log2(l.value+1)} />;
+      })}
+      {positioned.map((n) => (
+        <g key={n.id}>
+          <circle cx={n.cx} cy={n.cy} r={n.val + 4} fill={`${n.color}22`} stroke={n.color} strokeWidth={1.5} />
+          <text x={n.cx} y={n.cy + 1} textAnchor="middle" dominantBaseline="middle"
+            fontSize={8} fontFamily="monospace" fill={n.color} fontWeight="700">
+            {n.label.slice(0, 10)}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+};
+
+const ForceGraph2D = React.lazy(async () => {
+  try {
+    const mod = await import("react-force-graph-2d" as any);
+    return { default: mod.default ?? mod };
+  } catch {
+    return {
+      default: (props: any) => (
+        <FallbackGraph nodes={props.graphData?.nodes ?? []} links={props.graphData?.links ?? []} />
+      ),
+    };
+  }
+});
+
+// ── 7. CATÁLOGO DE DELITOS (FILTROS) ────────────────────────────────────────
+const CRIME_CATS = [
+  { id: "all",          label: "Todos",        color: "#00ffcc" },
+  { id: "extorsion",    label: "Extorsión",    color: "#ff6d00" },
+  { id: "violencia",    label: "Violencia",    color: "#ff1744" },
+  { id: "feminicidio",  label: "Feminicidio",  color: "#e91e8c" },
+  { id: "menores",      label: "Menores",      color: "#9c27b0" },
+  { id: "secuestro",    label: "Secuestro",    color: "#b71c1c" },
+  { id: "narcomenudeo", label: "Narcomenudeo", color: "#4a148c" },
+  { id: "robo",         label: "Robo",         color: "#c8a84b" },
+  { id: "homicidio",    label: "Homicidio",    color: "#37474f" },
+  { id: "bullying",     label: "Bullying",     color: "#00897b" },
+  { id: "otro",         label: "Otro",         color: "#aaa"    },
+] as const;
+
+type CrimeCatId = typeof CRIME_CATS[number]["id"];
+
+// ── 8. COMPONENTE PRINCIPAL ─────────────────────────────────────────────────
+export const SabanaAnalyzer: React.FC = () => {
+  const [rows,        setRows]        = useState<SabanaRow[]>([]);
+  const [zonas,       setZonas]       = useState<ZonaConfort[]>([]);
+  const [graph,       setGraph]       = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+  const [tab,         setTab]         = useState<"map" | "graph" | "table">("map");
+  const [mapCenter,   setMapCenter]   = useState<[number, number]>([19.4326, -99.1332]);
+  const [crimeFilter, setCrimeFilter] = useState<CrimeCatId>("all");
+  const [typeFilter,  setTypeFilter]  = useState<"all" | "DATOS" | "VOZ" | "SMS">("all");
+  const [search,      setSearch]      = useState("");
+
+  const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const parsed = await parseXlsx(file);
+      setRows(parsed);
+      const z = calcZonasConfort(parsed);
+      setZonas(z);
+      setGraph(buildGraph(parsed));
+      if (parsed[0]?.lat && parsed[0]?.lon) {
+        setMapCenter([parsed[0].lat, parsed[0].lon]);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setLoading(false);
+      setTab("table");
+  }, []);
+
+  // Filtrado de filas por categoría de delito, tipo y búsqueda de texto
+  const filteredRows = useMemo(() => {
+    return rows.filter((r) => {
+      if (typeFilter !== "all" && r.type !== typeFilter) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        if (!r.phone.toLowerCase().includes(q) &&
+            !r.alias?.toLowerCase().includes(q) &&
+            !r.cellId.toLowerCase().includes(q) &&
+            !r.imei?.toLowerCase().includes(q)) return false;
+      }
+      if (crimeFilter !== "all") {
+        const keywords: Record<string, string[]> = {
+          extorsion:    ["extorsion","extorsión","cobro","cuota"],
+          violencia:    ["violencia","golpe","agresion","agresión"],
+          feminicidio:  ["feminicidio","género","genero","violeta"],
+          menores:      ["menor","niño","nino","infante","dif"],
+          secuestro:    ["secuestro","plagio","levanton"],
+          narcomenudeo: ["narco","droga","cristal","mota"],
+          robo:         ["robo","asalto","carjack"],
+          homicidio:    ["homicidio","asesinato","muerte"],
+          bullying:     ["bullying","acoso","escolar"],
+          otro:         [],
+        };
+        const kws = keywords[crimeFilter] ?? [];
+        if (kws.length > 0) {
+          const haystack = (r.alias ?? "").toLowerCase() + " " + r.phone;
+          if (!kws.some((k) => haystack.includes(k))) return false;
+        }
+      }
+      return true;
+    });
+  }, [rows, crimeFilter, typeFilter, search]);
+
+  // Torres celulares únicas para el mapa
+  const cellTowers = useMemo(() => {
+    const seen = new Set<string>();
+    return filteredRows.filter((r) => {
+      if (!r.lat || !r.lon) return false;
+      const key = `${r.lat.toFixed(4)},${r.lon.toFixed(4)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [filteredRows]);
+
+  return (
+    <div style={{
+      height: "100vh", display: "flex", flexDirection: "column",
+      backgroundColor: "#020810", color: "#e0ffe8", fontFamily: "monospace",
+    }}>
+      {/* ── HEADER ────────────────────────────────────────────────────────── */}
+      <div style={{
+        padding: "10px 16px", borderBottom: "1px solid rgba(0,255,200,0.1)",
+        display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+      }}>
+        <h2 style={{ color: "#00ffcc", fontSize: 11, letterSpacing: "3px", margin: 0 }}>
+          📊 ANALIZADOR DE SÁBANA TELEFÓNICA
+        </h2>
+        <label style={{
+          padding: "7px 14px", background: "rgba(0,255,200,0.1)",
+          border: "1px solid rgba(0,255,200,0.4)", borderRadius: 6,
+          cursor: "pointer", fontSize: 10, color: "#00ffcc", letterSpacing: "1px",
+        }}>
+          {loading ? "⏳ PROCESANDO…" : "📂 CARGAR EXCEL (.xlsx)"}
+          <input type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: "none" }} disabled={loading} />
+        </label>
+        {rows.length > 0 && (
+          <span style={{ fontSize: 9, color: "#4a8a6a" }}>
+            ✅ {rows.length} registros · {cellTowers.length} torres · {zonas.length} zonas detectadas
+          </span>
+        )}
+        {error && <span style={{ fontSize: 9, color: "#ff6d00" }}>⚠️ {error}</span>}
+
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(["map", "graph", "table"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: "5px 12px", borderRadius: 6, fontSize: 9, cursor: "pointer",
+              background: tab === t ? "rgba(0,255,200,0.15)" : "transparent",
+              border: `1px solid ${tab === t ? "rgba(0,255,200,0.5)" : "rgba(0,255,200,0.15)"}`,
+              color: tab === t ? "#00ffcc" : "#4a8a6a", letterSpacing: "1px",
+            }}>
+              {t === "map" ? "🗺️ MAPA" : t === "graph" ? "🕸️ GRAFO" : "📋 TABLA"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── FILTROS ────────────────────────────────────────────────────────── */}
+      <div style={{
+        padding: "6px 16px", borderBottom: "1px solid rgba(0,255,200,0.06)",
+        background: "rgba(0,4,12,0.6)",
+        display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap",
+      }}>
+        <span style={{ fontSize: 8, color: "#2a4a3a", letterSpacing: "1px", flexShrink: 0 }}>
+          FILTROS:
+        </span>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {CRIME_CATS.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setCrimeFilter(c.id)}
+              style={{
+                padding: "2px 8px", borderRadius: 10, fontSize: 8, cursor: "pointer",
+                background: crimeFilter === c.id ? `${c.color}20` : "transparent",
+                border: `1px solid ${crimeFilter === c.id ? c.color : c.color + "30"}`,
+                color: crimeFilter === c.id ? c.color : `${c.color}60`,
+                fontFamily: "monospace",
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
+          style={{
+            padding: "3px 8px", background: "rgba(0,20,12,0.8)",
+            border: "1px solid rgba(0,255,200,0.2)", borderRadius: 6,
+            color: "#e0ffe8", fontFamily: "monospace", fontSize: 9, outline: "none",
+          }}
+        >
+          <option value="all">Tipo: Todos</option>
+          <option value="VOZ">Voz</option>
+          <option value="DATOS">Datos</option>
+          <option value="SMS">SMS</option>
+        </select>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar teléfono, alias, IMEI…"
+          style={{
+            padding: "3px 10px", background: "rgba(0,20,12,0.8)",
+            border: "1px solid rgba(0,255,200,0.15)", borderRadius: 6,
+            color: "#e0ffe8", fontFamily: "monospace", fontSize: 9, outline: "none",
+            flex: 1, minWidth: 140,
+          }}
+        />
+        {rows.length > 0 && (
+          <span style={{ fontSize: 8, color: "#3a6a5a", flexShrink: 0 }}>
+            {filteredRows.length} / {rows.length} registros
+          </span>
+        )}
+      </div>
+
+      {/* ── CONTENIDO PRINCIPAL ─────────────────────────────────────────────── */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+        
+        {/* TAB DEL MAPA */}
+        <div style={{ flex: 1, position: "relative", display: tab === "map" ? "block" : "none" }}>
+          {rows.length === 0 ? (
+            <div style={{
+              padding: "24px 32px", color: "#e0ffe8", fontFamily: "monospace",
+              display: "flex", flexDirection: "column", gap: 20,
+            }}>
+              {/* INFORMACIÓN DE VISTA PREVIA (DEMO TABLE) */}
+              <div style={{ padding: "14px 18px", borderRadius: 10, background: "rgba(0,255,200,0.04)", border: "1px solid rgba(0,255,200,0.12)" }}>
+                <p style={{ color: "#00ffcc", fontSize: 10, letterSpacing: "2px", margin: "0 0 8px" }}>
+                  📡 VISTA PREVIA — SÁBANA TELEFÓNICA
+                </p>
+                <p style={{ color: "#3a6a5a", fontSize: 8, margin: "0 0 14px", lineHeight: 1.7 }}>
+                  Carga un archivo Excel (.xlsx) con la sábana de registros de llamadas (CDR).
+                  El sistema detecta automáticamente las columnas y traza la topografía sobre el mapa.<br />
+                  <strong style={{ color: "#c8a84b" }}>Columnas esperadas:</strong> telefono · fecha · hora · lat · lon · imei · cellid · lac · azimuth · tipo · duracion · alias
+                </p>
+                
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 8 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid rgba(0,255,200,0.2)" }}>
+                        {["Teléfono","Fecha","Hora","Tipo","Dur.","IMEI","CellID","LAC","Lat","Lon","Az°","Alias"].map((h) => (
+                          <th key={h} style={{ padding: "4px 8px", color: "#00ffcc", fontWeight: "bold", textAlign: "left", letterSpacing: "1px", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { phone:"3146671482", date:"15/04/2017", time:"18:34:01", type:"VOZ",   dur:144, imei:"35855107346136", cellId:"12340",  lac:"3555", lat: 19.4280, lon:-99.1270, az:335, alias:"El Kevin"   },
+                        { phone:"3146671482", date:"15/04/2017", time:"22:44:33", type:"VOZ",   dur:324, imei:"35855107346136", cellId:"12340",  lac:"3555", lat: 19.4280, lon:-99.1270, az:335, alias:"El Kevin"   },
+                        { phone:"3146671482", date:"15/04/2017", time:"22:50:32", type:"VOZ",   dur: 19, imei:"35855107346136", cellId:"12571",  lac:"3555", lat: 19.4300, lon:-99.1250, az:175, alias:"El Kevin"   },
+                        { phone:"8211413332", date:"15/12/2018", time:"00:25:29", type:"DATOS", dur:1428,imei:"35155109455880", cellId:"35155",  lac:"3555", lat: 23.5855, lon:-99.4945, az:335, alias:"El Brayan"  },
+                        { phone:"8211413332", date:"15/12/2018", time:"01:09:47", type:"DATOS", dur:3800,imei:"35155109455880", cellId:"35155",  lac:"3555", lat: 24.5770, lon:-99.2950, az:230, alias:"El Brayan"  },
+                        { phone:"9876543210", date:"11/06/2019", time:"09:15:00", type:"VOZ",   dur: 87, imei:"35857207346136", cellId:"9384",   lac:"9007", lat: 19.2777, lon:-99.5421, az: 90, alias:"La Jaroza"  },
+                      ].map((r, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid rgba(0,255,200,0.04)", background: i % 2 === 0 ? "rgba(0,255,200,0.01)" : "transparent" }}>
+                          <td style={{ padding: "3px 8px", color: "#c8a84b" }}>{r.phone}</td>
+                          <td style={{ padding: "3px 8px", color: "#8aa" }}>{r.date}</td>
+                          <td style={{ padding: "3px 8px" }}>{r.time}</td>
+                          <td style={{ padding: "3px 8px", color: r.type === "VOZ" ? "#00e676" : "#4a8a6a" }}>{r.type}</td>
+                          <td style={{ padding: "3px 8px" }}>{r.dur}s</td>
+                          <td style={{ padding: "3px 8px", color: "#6a6a8a" }}>{r.imei.slice(-8)}</td>
+                          <td style={{ padding: "3px 8px" }}>{r.cellId}</td>
+                          <td style={{ padding: "3px 8px" }}>{r.lac}</td>
+                          <td style={{ padding: "3px 8px", color: "#4a9a6a" }}>{r.lat.toFixed(4)}</td>
+                          <td style={{ padding: "3px 8px", color: "#4a9a6a" }}>{r.lon.toFixed(4)}</td>
+                          <td style={{ padding: "3px 8px" }}>{r.az}°</td>
+                          <td style={{ padding: "3px 8px", color: "#ff6d00" }}>{r.alias}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* TARJETAS INFORMATIVAS */}
+          {rows.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, margin: "8px 0" }}>
+              <div style={{ background: "rgba(0,212,255,0.08)", border: "1px solid #00d4ff", borderRadius: 6, padding: "8px", textAlign: "center" }}>
+                <div style={{ color: "#00d4ff", fontSize: 18, fontWeight: "bold" }}>{rows.length}</div>
+                <div style={{ color: "#888", fontSize: 9 }}>Registros</div>
+              </div>
+              <div style={{ background: "rgba(255,200,0,0.08)", border: "1px solid #ffc800", borderRadius: 6, padding: "8px", textAlign: "center" }}>
+                <div style={{ color: "#ffc800", fontSize: 18, fontWeight: "bold" }}>{new Set(rows.map(r => r.phone)).size}</div>
+                <div style={{ color: "#888", fontSize: 9 }}>Teléfonos</div>
+              </div>
+              <div style={{ background: "rgba(160,100,255,0.08)", border: "1px solid #a064ff", borderRadius: 6, padding: "8px", textAlign: "center" }}>
+                <div style={{ color: "#a064ff", fontSize: 18, fontWeight: "bold" }}>{new Set(rows.map(r => r.cellId)).size}</div>
+                <div style={{ color: "#888", fontSize: 9 }}>Celdas</div>
+              </div>
+              <div style={{ background: "rgba(0,255,100,0.08)", border: "1px solid #00ff64", borderRadius: 6, padding: "8px", textAlign: "center" }}>
+                <div style={{ color: "#00ff64", fontSize: 18, fontWeight: "bold" }}>{new Set(rows.map(r => r.imei)).size}</div>
+                <div style={{ color: "#888", fontSize: 9 }}>IMEIs</div>
+              </div>
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10, marginTop: 8 }}>
+            {[
+              { label: "TOPOGRAFÍA", desc: "Mapa de celdas", tab: "map" },
+              { label: "ZONA DE CONFORT", desc: "Zonas frecuentes", tab: "table" },
+              { label: "GRAFO DE CRUCES", desc: "Red de contactos", tab: "graph" },
+              { label: "TABLA FILTRABLE", desc: "Registros filtrados", tab: "table" },
+            ].map(f => (
+              <div key={f.label} onClick={() => setTab(f.tab as "map" | "graph" | "table")} style={{ padding: "12px 14px", borderRadius: 8, background: "rgba(0,255,200,0.03)", border: "1px solid rgba(0,255,200,0.15)", cursor: "pointer" }}>
+                <p style={{ color: "#00ffcc", fontSize: 9, margin: "0 0 5px", fontWeight: "bold" }}>{f.label}</p>
+                <p style={{ color: "#3a6a5a", fontSize: 8, margin: 0, lineHeight: 1.5 }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+              <MapContainer key="sabana-map-stable" center={mapCenter} zoom={13} style={{ height: "100%", width: "100%" }} attributionControl={false}>
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  subdomains="abcd" maxZoom={19}
+                />
+                {/* Torres Celulares y Radares */}
+                {cellTowers.map((r, i) => (
+                  <React.Fragment key={i}>
+                    <Marker position={[r.lat, r.lon]} icon={cellIcon}>
+                      <Tooltip direction="top">
+                        <span style={{ fontFamily: "monospace", fontSize: 9 }}>
+                          Cell: {r.cellId} · LAC: {r.lac}<br />
+                          IMEI: {r.imei}<br />
+                          {r.phone} · {r.time}
+                        </span>
+                      </Tooltip>
+                    </Marker>
+
+                    <Circle
+                      center={[r.lat, r.lon]} radius={150}
+                      pathOptions={{ color: "#00ffcc", weight: 1, opacity: 0.4, fillOpacity: 0.04 }}
+                    />
+
+                    {r.azimuth > 0 && (() => {
+                      const end = offsetPoint(r.lat, r.lon, r.azimuth, 150);
+                      return (
+                        <Polyline
+                          positions={[[r.lat, r.lon], end]}
+                          pathOptions={{ color: "#c8a84b", weight: 1.2, opacity: 0.6, dashArray: "4 6" }}
+                        />
+                      );
+                    })()}
+                  </React.Fragment>
+                ))}
+
+                {/* Zonas de Confort */}
+                {zonas.map((z, i) => (
+                  <React.Fragment key={i}>
+                    <Circle
+                      center={[z.lat, z.lon]} radius={80}
+                      pathOptions={{ color: z.color, weight: 2.5, opacity: 0.8, fillOpacity: 0.12 }}
+                    />
+                    <Circle
+                      center={[z.lat, z.lon]} radius={200}
+                      pathOptions={{ color: z.color, weight: 1, opacity: 0.3, fillOpacity: 0.04 }}
+                    />
+                    <Marker position={[z.lat, z.lon]} icon={L.divIcon({
+                      className: "",
+                      iconSize: [120, 28],
+                      iconAnchor: [60, -6],
+                      html: `<div style="background:rgba(2,8,16,0.88);border:1px solid ${z.color};border-radius:4px;padding:3px 7px;font-family:monospace;font-size:9px;color:${z.color};white-space:nowrap;">${z.label} (${z.frequency}×)</div>`,
+                    })}>
+                      <Tooltip permanent direction="top">
+                        <span style={{ fontFamily: "monospace", fontSize: 9 }}>
+                          {z.label}<br />Frec: {z.frequency}× · {z.hours}
+                        </span>
+                      </Tooltip>
+                    </Marker>
+                  </React.Fragment>
+                ))}
+              </MapContainer>
+
+              {/* Leyenda de Zonas */}
+              {zonas.length > 0 && (
+                <div style={{
+                  position: "absolute", bottom: 16, left: 16, zIndex: 1000,
+                  background: "rgba(2,8,16,0.9)", border: "1px solid rgba(0,255,200,0.15)",
+                  borderRadius: 8, padding: "10px 14px", fontSize: 9,
+                }}>
+                  <p style={{ color: "#00ffcc", margin: "0 0 6px", letterSpacing: "1px" }}>ZONAS DE CONFORT</p>
+                  {zonas.map((z, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: z.color }} />
+                      <span style={{ color: z.color }}>{z.label}</span>
+                      <span style={{ color: "#4a8a6a" }}>{z.frequency}× · {z.hours}</span>
+                    </div>
+                  ))}
+                </div>
+          )}
+
+        {/* TAB DEL GRAFO (i2) */}
+        {tab === "graph" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "8px 16px", fontSize: 9, color: "#3a6a5a", borderBottom: "1px solid rgba(0,255,200,0.06)" }}>
+              RED TÉCNICA ({graph.nodes.length} nodos · {graph.links.length} enlaces)
+              — <span style={{ color: "#00e5ff" }}>● Teléfonos</span>{" "}
+              <span style={{ color: "#c8a84b" }}>● IMEIs</span>
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              {graph.nodes.length === 0 ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                  <p style={{ color: "#2a5a4a", fontSize: 10 }}>Carga una sábana para ver el grafo</p>
+                </div>
+              ) : (
+                <Suspense fallback={<div style={{ padding: 20, color: "#4a8a6a" }}>Cargando motor de grafo…</div>}>
+                  <ForceGraph2D
+                    graphData={graph}
+                    backgroundColor="#020810"
+                    nodeLabel={(n: any) => n.label}
+                    nodeColor={(n: any) => n.color}
+                    nodeVal={(n: any) => n.val}
+                    linkColor={(l: any) => l.color}
+                    linkWidth={(l: any) => Math.log2(l.value + 1)}
+                  />
+                </Suspense>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB DE LA TABLA FILTRABLE */}
+        {tab === "table" && (
+          <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+            {rows.length === 0 ? (
+              <p style={{ color: "#2a5a4a", fontSize: 10 }}>Sin datos. Carga un Excel.</p>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 9 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(0,255,200,0.2)" }}>
+                    {["Teléfono","Fecha","Hora","Tipo","Dur.","IMEI","CellID","LAC","Lat","Lon","Az°","Alias"].map((h) => (
+                      <th key={h} style={{ padding: "4px 8px", color: "#00ffcc", fontWeight: "bold", textAlign: "left", letterSpacing: "1px" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.slice(0, 500).map((r, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid rgba(0,255,200,0.04)", background: i % 2 === 0 ? "rgba(0,255,200,0.01)" : "transparent" }}>
+                      <td style={{ padding: "3px 8px", color: "#c8a84b" }}>{r.phone}</td>
+                      <td style={{ padding: "3px 8px", color: "#8aa" }}>{r.date}</td>
+                      <td style={{ padding: "3px 8px" }}>{r.time}</td>
+                      <td style={{ padding: "3px 8px", color: r.type === "VOZ" ? "#00e676" : "#4a8a6a" }}>{r.type}</td>
+                      <td style={{ padding: "3px 8px" }}>{r.duration}s</td>
+                      <td style={{ padding: "3px 8px", color: "#6a6a8a", fontSize: 8 }}>{r.imei?.slice(-8)}</td>
+                      <td style={{ padding: "3px 8px" }}>{r.cellId}</td>
+                      <td style={{ padding: "3px 8px" }}>{r.lac}</td>
+                      <td style={{ padding: "3px 8px", color: "#4a9a6a" }}>{r.lat ? r.lat.toFixed(6) : "—"}</td>
+                      <td style={{ padding: "3px 8px", color: "#4a9a6a" }}>{r.lon ? r.lon.toFixed(6) : "—"}</td>
+                      <td style={{ padding: "3px 8px" }}>{r.azimuth || "—"}</td>
+                      <td style={{ padding: "3px 8px", color: "#ff6d00" }}>{r.alias || "—"}</td>
+                    </tr>
+                  ))}
+                  {filteredRows.length > 500 && (
+                    <tr>
+                      <td colSpan={12} style={{ padding: "8px", color: "#3a6a5a", textAlign: "center" }}>
+                        … {filteredRows.length - 500} registros adicionales
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  </>
+  );
+};

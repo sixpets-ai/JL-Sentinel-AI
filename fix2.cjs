@@ -1,0 +1,1 @@
+﻿const fs=require("fs");const f="C:/Users/Wyse/Desktop/J-L-Sentinel-AI/05_Respaldo_Codigo/Intelligent-Patrols/CommandView.tsx";let c=fs.readFileSync(f,"utf8");const b=c.length;c=c.split("\\`").join("`");fs.writeFileSync(f,c,"utf8");console.log("FIXED:",b,"->",c.length);

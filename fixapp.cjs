@@ -1,0 +1,1 @@
+const fs=require("fs");const f="C:/Users/Wyse/Desktop/J-L-Sentinel-AI/05_Respaldo_Codigo/Intelligent-Patrols/App.tsx";let c=fs.readFileSync(f,"utf8");c=c.replace("import { CommandView }","import CommandView");fs.writeFileSync(f,c,"utf8");console.log("APP FIXED");

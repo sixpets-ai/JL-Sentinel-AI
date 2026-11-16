@@ -1,0 +1,105 @@
+
+App.tsx: C:\Users\Wyse\Desktop\J-L-Sentinel-AI\05_Respaldo_Codigo\Intelligent-Patrols\App.tsx
+
+=== TABS ARRAY ===
+const TABS: Tab[]
+
+=== RENDER NAVBAR (L103-200) ===
+L103:   const groups = (["ops", "intel", "field"] as Tab["group"][]);
+L104: 
+L105:   return (
+L106:     <div className="App">
+L107:       <ApiStatusBar />
+L108:       {!isAuth && (
+L109:         <nav className="santi-nav">
+L110:           <div className="santi-logo">
+L111:             <div style={{ position: "relative", width: 26, height: 26 }}>
+L112:               <svg viewBox="0 0 26 26" width="26" height="26">
+L113:                 <circle cx="13" cy="13" r="11" fill="none" stroke="rgba(0,255,200,0.6)" strokeWidth="1.2"/>
+L114:                 <circle cx="13" cy="13" r="7"  fill="none" stroke="rgba(0,255,200,0.3)" strokeWidth="0.8"/>
+L115:                 <line x1="13" y1="2"  x2="13" y2="24" stroke="rgba(0,255,200,0.25)" strokeWidth="0.6"/>
+L116:                 <line x1="2"  y1="13" x2="24" y2="13" stroke="rgba(0,255,200,0.25)" strokeWidth="0.6"/>
+L117:                 <circle cx="13" cy="13" r="2.5" fill="#00ffcc" opacity="0.8"/>
+L118:               </svg>
+L119:               <div className="santi-live" style={{ position:"absolute", top:0, right:0, width:5, height:5, borderRadius:"50%", background:"#00ffcc" }} />
+L120:             </div>
+L121:             <div>
+L122:               <div className="santi-logo-text">SANTI NEXUS</div>
+L123:               <div className="santi-logo-sub">C.M.O. ├é┬À ZERO TRUST</div>
+L124:             </div>
+L125:           </div>
+L126: 
+L127:           {groups.map((grp) => {
+L128:             const tabs = TABS.filter((t) => t.group === grp);
+L129:             return (
+L130:               <div key={grp} className="santi-nav-group">
+L131:                 <span className="santi-nav-group-label">{GROUP_LABELS[grp]}</span>
+L132:                 {tabs.map((t) => {
+L133:                   const active = view === t.id;
+L134:                   const bgAlpha = active ? "22" : "00";
+L135:                   return (
+L136:                     <button
+L137:                       key={t.id}
+L138:                       onClick={() => handleTabClick(t.id)}
+L139:                       className={`santi-tab${active ? " active" : ""}`}
+L140:                       style={{
+L141:                         "--tab-color":    t.color,
+L142:                         "--tab-color-bg": `${t.color}${bgAlpha}`,
+L143:                         color: active ? t.color : `${t.color}80`,
+L144:                       } as React.CSSProperties}
+L145:                       title={t.label}
+L146:                     >
+L147:                       <span style={{ fontSize: 11 }}>{t.icon}</span>
+L148:                       <span>{t.label}</span>
+L149:                       {t.gated && !session && <span className="lock-dot" />}
+L150:                     </button>
+L151:                   );
+L152:                 })}
+L153:               </div>
+L154:             );
+L155:           })}
+L156: 
+L157:           {session && (
+L158:             <div className="santi-session">
+L159:               <span>├ó┼ôÔÇª</span>
+L160:               <strong>{session.analyst}</strong>
+L161:               {(session as any).corp && (
+L162:                 <span style={{ color: "#3a6a5a" }}>{(session as any).corp}</span>
+L163:               )}
+L164:               <span style={{ color: "#2a4a3a" }}>├é┬À</span>
+L165:               <span style={{ color: "#c8a84b" }}>{session.caseId}</span>
+L166:               <button
+L167:                 onClick={() => setSession(null)}
+L168:                 title="Cerrar sesi├â┬│n"
+L169:                 style={{ background: "none", border: "none", color: "rgba(255,23,68,0.45)", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1 }}
+L170:               >├ó┼ôÔÇó</button>
+L171:             </div>
+L172:           )}
+L173:         </nav>
+L174:       )}
+L175: 
+L176:       <div className="santi-body">
+L177:         {isAuth      && <AuthBiometrico onAuthenticated={handleAuthenticated} />}
+L178:         {!isAuth && view === "citizen"   && <CitizenView />}
+L179:         {!isAuth && view === "command"   && <CommandView />}
+L180:         {!isAuth && view === "map3d"     && <TacticalMap3D />}
+L181:         {!isAuth && view === "forensic"  && <ForensicView />}
+L182:         {!isAuth && view === "links"     && <LinkAnalysisView />}
+L183:         {!isAuth && view === "sabana"    && <SabanaAnalyzer />}
+L184:         {!isAuth && view === "agentes"   && <AgenteAvatar />}
+L185:         {!isAuth && view === "osint"     && <OSINTView />}
+L186:         {!isAuth && view === "guardian"  && <CitizenGuardian />}
+L187:         {!isAuth && view === "education" && <EducationView />}
+L188:         {!isAuth && view === "cases"     && <CasesView />}
+L189:       </div>
+L190:     </div>
+L191:   );
+L192: }
+L193: 
+L194: export default App;
+L195: 
+
+=== POSICIONES 'Director de Marketing' ===
+Con comillas dobles: -1
+Con comillas simples: -1
+Con backtick: -1

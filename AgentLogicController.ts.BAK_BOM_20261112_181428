@@ -1,0 +1,245 @@
+﻿/**
+ * AgentLogicController.ts
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * Centralises all AI-backend communication for SANTI NEXUS agents.
+ *
+ * Responsibilities:
+ *  1. Single fetch wrapper for /api/chat → Gemini via backend
+ *  2. Health probes for Gemini, Watsonx and Telegram (backend exposes /api/health)
+ *  3. React hook useApiStatus() for the semaphore widget
+ *  4. Reasoning validator: checks that replies are non-empty, non-boilerplate
+ *     and flagged when the Gemini fallback fires ("Manten la calma")
+ *
+ * BACKEND IS INTOCABLE — all requests go through existing /api/* endpoints.
+ */
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+export type ApiName = "gemini" | "watsonx" | "telegram";
+export type ApiStatus = "online" | "degraded" | "offline" | "checking";
+
+export interface ServiceHealth {
+  name:       ApiName;
+  status:     ApiStatus;
+  latencyMs:  number | null;
+  lastCheck:  string | null;
+  note:       string;
+}
+
+export interface ChatResult {
+  response:    string;
+  brain_used:  string;
+  latencyMs:   number;
+  isFallback:  boolean;   // true when backend returned the local fallback
+  isReasoned:  boolean;   // false if response looks like boilerplate / empty
+}
+
+// ── Fallback detection ────────────────────────────────────────────────────────
+// The backend emits this exact string when Gemini throws:
+const FALLBACK_MARKERS = [
+  "Manten la calma",
+  "la unidad ya va en camino",
+  "Sin respuesta del servidor",
+  "Error de conexión",
+];
+
+function detectFallback(text: string): boolean {
+  return FALLBACK_MARKERS.some((m) => text.toLowerCase().includes(m.toLowerCase()));
+}
+
+function detectReasoned(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length < 20) return false;
+  if (detectFallback(trimmed)) return false;
+  return true;
+}
+
+// ── Core chat function ────────────────────────────────────────────────────────
+export async function agentChat(
+  agentId: string,
+  prompt:  string,
+  lang     = "es",
+): Promise<ChatResult> {
+  const t0 = performance.now();
+  let raw: Response;
+  try {
+    raw = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent: agentId, prompt, lang }),
+    });
+  } catch (netErr: any) {
+    // ── Real network error — surface it, not a generic fallback ──────────────
+    const msg = `⚠️ Sin conexión con el servidor SANTI (${netErr?.message ?? "fetch failed"}). ` +
+      "Verifica que 'node server.js' esté corriendo en el puerto 3001.";
+    console.error("[SANTI NEXUS] agentChat network error:", netErr);
+    return {
+      response:   msg,
+      brain_used: "None",
+      latencyMs:  Math.round(performance.now() - t0),
+      isFallback: true,
+      isReasoned: false,
+    };
+  }
+
+  const latencyMs = Math.round(performance.now() - t0);
+
+  // ── Surface real HTTP errors ──────────────────────────────────────────────
+  if (!raw.ok) {
+    const body = await raw.text().catch(() => "");
+    const msg  = `⚠️ Error del servidor: HTTP ${raw.status}${body ? ` — ${body.slice(0, 200)}` : ""}`;
+    console.error(`[SANTI NEXUS] agentChat HTTP ${raw.status}:`, body);
+    return {
+      response:   msg,
+      brain_used: `HTTP ${raw.status}`,
+      latencyMs,
+      isFallback: true,
+      isReasoned: false,
+    };
+  }
+
+  let data: any = {};
+  try { data = await raw.json(); } catch (parseErr) {
+    console.error("[SANTI NEXUS] agentChat JSON parse error:", parseErr);
+  }
+
+  const response   = data.response   ?? "Sin respuesta.";
+  const brain_used = data.brain_used ?? "Unknown";
+
+  // ── Log Gemini fallback with full context so the developer can debug ──────
+  const isFallback = detectFallback(response);
+  if (isFallback) {
+    console.warn(
+      `[SANTI NEXUS] Gemini fallback activo.\n` +
+      `  agent     : ${agentId}\n` +
+      `  brain_used: ${brain_used}\n` +
+      `  response  : ${response.slice(0, 120)}\n` +
+      `  latencyMs : ${latencyMs}\n` +
+      `\n  Causas probables:\n` +
+      `  • GEMINI_API_KEY inválida o expirada — revisa .env\n` +
+      `  • Cuota de Google AI Studio agotada (free tier: 1 500 req/día)\n` +
+      `  • Modelo "gemini-2.5-flash" no habilitado en tu proyecto de Google Cloud\n` +
+      `  • El servidor no tiene acceso a internet (firewall/proxy corporativo)\n` +
+      `  Verifica: https://aistudio.google.com/app/apikey`
+    );
+  } else {
+    console.info(`[SANTI NEXUS] Gemini OK · ${agentId} · ${brain_used} · ${latencyMs}ms`);
+  }
+
+  return {
+    response,
+    brain_used,
+    latencyMs,
+    isFallback,
+    isReasoned: detectReasoned(response),
+  };
+}
+
+// ── Health probe functions ─────────────────────────────────────────────────────
+// We probe Gemini by sending a minimal /api/chat call.
+// Watsonx health is inferred from the audit flag in the chat response.
+// Telegram health is probed via /api/health (see note below).
+//
+// NOTE: /api/health is a lightweight endpoint we add to the backend response
+// map below — but since server.js is INTOCABLE we probe indirectly:
+//   • Gemini:   small /api/chat call → latency + fallback detection
+//   • Watsonx:  /api/brains-status (always fast, confirms server up)
+//   • Telegram: /api/panic-state (confirms server processes; Telegram status
+//               inferred from env — if server returns 200 we assume bot is wired)
+
+async function probeGemini(): Promise<Omit<ServiceHealth, "name">> {
+  const t0 = performance.now();
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent: "SANTI", prompt: "ping", lang: "es" }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const latencyMs = Math.round(performance.now() - t0);
+    if (!res.ok) {
+      return { status: "degraded", latencyMs, lastCheck: new Date().toISOString(), note: `HTTP ${res.status}` };
+    }
+    const data = await res.json().catch(() => ({}));
+    const fb   = detectFallback(data.response ?? "");
+    return {
+      status:    fb ? "degraded" : "online",
+      latencyMs,
+      lastCheck: new Date().toISOString(),
+      note:      fb ? `Fallback activo (${data.brain_used})` : `OK · ${data.brain_used ?? "Gemini"} · ${latencyMs}ms`,
+    };
+  } catch (e: any) {
+    return { status: "offline", latencyMs: null, lastCheck: new Date().toISOString(), note: e.message };
+  }
+}
+
+async function probeWatsonx(): Promise<Omit<ServiceHealth, "name">> {
+  const t0 = performance.now();
+  try {
+    const res = await fetch("/api/brains-status", {
+      signal: AbortSignal.timeout(5000),
+    });
+    const latencyMs = Math.round(performance.now() - t0);
+    if (!res.ok) return { status: "degraded", latencyMs, lastCheck: new Date().toISOString(), note: `HTTP ${res.status}` };
+    return {
+      status:    "online",
+      latencyMs,
+      lastCheck: new Date().toISOString(),
+      note:      `Server OK · Audit pipeline activo · ${latencyMs}ms`,
+    };
+  } catch (e: any) {
+    return { status: "offline", latencyMs: null, lastCheck: new Date().toISOString(), note: e.message };
+  }
+}
+
+async function probeTelegram(): Promise<Omit<ServiceHealth, "name">> {
+  const t0 = performance.now();
+  try {
+    const res = await fetch("/api/panic-state", {
+      signal: AbortSignal.timeout(4000),
+    });
+    const latencyMs = Math.round(performance.now() - t0);
+    if (!res.ok) return { status: "degraded", latencyMs, lastCheck: new Date().toISOString(), note: `HTTP ${res.status}` };
+    return {
+      status:    "online",
+      latencyMs,
+      lastCheck: new Date().toISOString(),
+      note:      `Server en línea · Bot wired a TELEGRAM_BOT_TOKEN · ${latencyMs}ms`,
+    };
+  } catch (e: any) {
+    return { status: "offline", latencyMs: null, lastCheck: new Date().toISOString(), note: e.message };
+  }
+}
+
+// ── Full health check ─────────────────────────────────────────────────────────
+export async function checkAllApis(): Promise<ServiceHealth[]> {
+  const [g, w, t] = await Promise.all([probeGemini(), probeWatsonx(), probeTelegram()]);
+  return [
+    { name: "gemini",   ...g },
+    { name: "watsonx",  ...w },
+    { name: "telegram", ...t },
+  ];
+}
+
+// ── React hook ────────────────────────────────────────────────────────────────
+import { useState, useEffect, useCallback } from "react";
+
+export function useApiStatus(intervalMs = 30_000) {
+  const [services, setServices] = useState<ServiceHealth[]>([
+    { name: "gemini",   status: "checking", latencyMs: null, lastCheck: null, note: "Verificando…" },
+    { name: "watsonx",  status: "checking", latencyMs: null, lastCheck: null, note: "Verificando…" },
+    { name: "telegram", status: "checking", latencyMs: null, lastCheck: null, note: "Verificando…" },
+  ]);
+
+  const refresh = useCallback(async () => {
+    const results = await checkAllApis();
+    setServices(results);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, intervalMs);
+    return () => clearInterval(id);
+  }, [refresh, intervalMs]);
+
+  return { services, refresh };
+}

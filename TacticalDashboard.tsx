@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -7,29 +7,71 @@ const TacticalDashboard = () => {
     "Sistema SANTI NEXUS en línea. Esperando instrucciones.",
   );
 
-  // 🎙️ FUNCIÓN DE VOZ (Katering femenina / Hombres graves)
-  const speakResponse = (text: string, agentName: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
+  // ── Barge-in voice ──────────────────────────────────────────────────────────
+  // speakResponse: cancels any ongoing speech before starting new utterance.
+  // startListening: calls speechSynthesis.cancel() immediately so the agent
+  //   stops talking the instant the user begins speaking — "barge-in" behaviour.
+  const recognitionRef = useRef<any>(null);
+  const [isListening, setIsListening] = useState(false);
 
+  const speakResponse = useCallback((text: string, agentName: string) => {
+    // Cancel any speech currently playing (barge-in: new speech interrupts old)
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "es-MX";
     if (agentName === "KATERING") {
-      utterance.pitch = 1.6; // Fuerza voz aguda (femenina)
+      utterance.pitch = 1.6;
       utterance.rate = 1.05;
     } else {
-      utterance.pitch = 0.8; // Fuerza voz grave (masculina)
+      utterance.pitch = 0.8;
       utterance.rate = 1.0;
     }
+    // Pick best available Spanish voice
+    const loadAndSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const voice =
+        voices.find((v) => v.lang.includes("es") && v.name.includes("Google")) ||
+        voices.find((v) => v.lang.includes("es"));
+      if (voice) utterance.voice = voice;
+      window.speechSynthesis.speak(utterance);
+    };
+    if (window.speechSynthesis.getVoices().length) {
+      loadAndSpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = loadAndSpeak;
+    }
+  }, []);
 
-    utterance.lang = "es-MX";
+  const startListening = useCallback((onResult: (transcript: string) => void) => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
-    // Buscar la mejor voz en español del sistema
-    const voices = window.speechSynthesis.getVoices();
-    const voice =
-      voices.find((v) => v.lang.includes("es") && v.name.includes("Google")) ||
-      voices.find((v) => v.lang.includes("es"));
-    if (voice) utterance.voice = voice;
+    // ── Barge-in: stop the agent speaking the instant the mic opens ──────────
+    window.speechSynthesis.cancel();
 
-    window.speechSynthesis.speak(utterance);
-  };
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "es-MX";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend   = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0]?.[0]?.transcript ?? "";
+      if (transcript.trim()) onResult(transcript.trim());
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, []);
 
   return (
     <div
@@ -90,49 +132,43 @@ const TacticalDashboard = () => {
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+        <div style={{ display: "flex", gap: "10px", marginTop: "20px", flexWrap: "wrap" }}>
           <button
             onClick={() => {
-              setAgentResponse(
-                "Hola, soy KATERING. Estoy aquí para apoyarte. ¿Te sientes en peligro?",
-              );
-              speakResponse(
-                "Hola, soy KATERING. Estoy aquí para apoyarte. ¿Te sientes en peligro?",
-                "KATERING",
-              );
+              const msg = "Hola, soy KATERING. Estoy aquí para apoyarte. ¿Te sientes en peligro?";
+              setAgentResponse(msg);
+              speakResponse(msg, "KATERING");
             }}
-            style={{
-              padding: "10px",
-              backgroundColor: "#ff00aa",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
+            style={{ padding: "10px", backgroundColor: "#ff00aa", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}
           >
             🦋 Hablar con Katering
           </button>
 
           <button
             onClick={() => {
-              setAgentResponse(
-                "Soy SANTI. Coordinando despliegue táctico a nivel federal.",
-              );
-              speakResponse(
-                "Soy SANTI. Coordinando despliegue táctico a nivel federal.",
-                "SANTI",
-              );
+              const msg = "Soy SANTI. Coordinando despliegue táctico a nivel federal.";
+              setAgentResponse(msg);
+              speakResponse(msg, "SANTI");
             }}
-            style={{
-              padding: "10px",
-              backgroundColor: "#0088ff",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
+            style={{ padding: "10px", backgroundColor: "#0088ff", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}
           >
             🛡️ Hablar con SANTI
+          </button>
+
+          {/* Barge-in mic button — stops agent speech, starts listening */}
+          <button
+            onClick={() => startListening((transcript) => {
+              setAgentResponse(`[Transcripción]: ${transcript}`);
+              speakResponse(`Entendido. Dijiste: ${transcript}`, "SANTI");
+            })}
+            style={{
+              padding: "10px", backgroundColor: isListening ? "#ff4400" : "#223322",
+              color: isListening ? "white" : "#00ff88",
+              border: `1px solid ${isListening ? "#ff4400" : "#00ff8840"}`,
+              borderRadius: "5px", cursor: "pointer", fontFamily: "monospace", fontSize: "11px",
+            }}
+          >
+            {isListening ? "🔴 Escuchando..." : "🎤 Hablar (Barge-in)"}
           </button>
         </div>
       </div>

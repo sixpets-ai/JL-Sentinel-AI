@@ -1,59 +1,207 @@
+import IbmNexusBar from './IbmNexusBar';
 import React, { useState } from "react";
-import { CitizenView } from "./CitizenView";
-import { CommandView } from "./CommandView";
+import { CitizenView }      from "./CitizenView";
+import CommandView      from "./CommandView";
+import { ForensicView }     from "./ForensicView";
+import { AuthBiometrico }   from "./AuthBiometrico";
+import type { SessionAuth } from "./AuthBiometrico";
+import SabanaAnalyzer   from "./SabanaAnalyzer";
+import { AgenteAvatar }     from "./AgenteAvatar";
+import { OSINTView }        from "./OSINTView";
+import { CitizenGuardian }  from "./CitizenGuardian";
+import { EducationView }    from "./EducationView";
+import { ApiStatusBar }     from "./ApiStatusBar";
+import { LinkAnalysisView } from "./LinkAnalysisView";
+import { CasesView }        from "./CasesView";
+import { TacticalMap3D }    from "./TacticalMap3D"; // �”¥ IMPORT 3D
+import GovernanceView from "./GovernanceView";  // 🛡️ IBM Responsible AI
 
-/* © 2026 José Sierra / J&L Sentinel AI. Todos los derechos reservados. Software de apoyo a la decisión. No sustituye servicios de emergencia reales. */
+type View =
+  | "citizen" | "command" | "forensic"
+  | "sabana"  | "agentes" | "osint"
+  | "guardian" | "education" | "links" | "cases"
+  | "map3d" // �”¥ NUEVO TIPO
+  | "governance"; // 🛡️ IBM Responsible AI
 
+interface Tab {
+  id:      View;
+  label:   string;
+  icon:    string;
+  color:   string;
+  group:   "ops" | "intel" | "field";
+  gated?:  boolean;
+}
+
+const TABS: Tab[] = [
+  { id: "citizen",   label: "C.M.O.",        icon: "🌍",   color: "#00ffcc", group: "ops"   },
+  { id: "command",   label: "Mando",          icon: "🛡",  color: "#c8a84b", group: "ops"   },
+  { id: "map3d",     label: "T\u00e1ctico 3D",icon: "🗺",    color: "#00ffcc", group: "ops"   },
+  { id: "guardian",  label: "Guardi\u00e1n",  icon: "👁",    color: "#cc44ff", group: "ops"   },
+  { id: "forensic",  label: "Forense",        icon: "🔬",  color: "#7c4dff", group: "intel" },
+  { id: "links",     label: "Redes i2",       icon: "🕸",    color: "#ff6d00", group: "intel" },
+  { id: "osint",     label: "OSINT",          icon: "📡",    color: "#9c27b0", group: "intel", gated: true },
+  { id: "cases",     label: "Carpetas",       icon: "📁", color: "#00e5ff", group: "intel", gated: true },
+  { id: "sabana",    label: "S\u00e1bana",    icon: "📱",  color: "#00e5ff", group: "field", gated: true },
+  { id: "agentes",   label: "Agentes IA",     icon: "🤖",  color: "#ff4fc8", group: "field", gated: true },
+  { id: "education", label: "Academia",       icon: "📚",   color: "#00e676", group: "field" },
+  { id: "governance", label: "Gov. IA", icon: "\u{1F6E1}\uFE0F", color: "#00ffcc", group: "ops" },
+]
+
+const GROUP_LABELS: Record<Tab["group"], string> = {
+  ops:   "OPS",
+  intel: "INTEL",
+  field: "CAMPO",
+};
+
+if (typeof document !== "undefined") {
+  const s = document.createElement("style");
+  s.textContent = `
+    * { box-sizing: border-box; }
+    html, body, #root { height: 100%; margin: 0; padding: 0; }
+    body { background: #020810; overflow-x: hidden; }
+    .santi-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 9998; height: 46px; background: rgba(2,8,16,0.97); border-bottom: 1px solid rgba(0,255,200,0.12); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: flex; align-items: center; padding: 0 12px; gap: 0; }
+    .santi-logo { display: flex; align-items: center; gap: 7px; padding-right: 14px; border-right: 1px solid rgba(0,255,200,0.12); margin-right: 10px; flex-shrink: 0; }
+    .santi-logo-text { font-family: monospace; font-weight: 700; letter-spacing: 3px; font-size: 12px; color: #00ffcc; text-shadow: 0 0 12px rgba(0,255,200,0.5); }
+    .santi-logo-sub { font-family: monospace; font-size: 7px; color: #3a6a5a; letter-spacing: 2px; }
+    .santi-nav-group { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-right: 1px solid rgba(0,255,200,0.07); }
+    .santi-nav-group-label { font-family: monospace; font-size: 7px; color: #2a4a3a; letter-spacing: 2px; padding-right: 4px; flex-shrink: 0; }
+    .santi-tab { display: flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 5px; border: 1px solid transparent; background: transparent; font-family: monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.5px; cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s, color 0.12s; position: relative; }
+    .santi-tab:hover { background: rgba(255,255,255,0.04); }
+    .santi-tab.active { background: var(--tab-color-bg); border-color: var(--tab-color); color: var(--tab-color) !important; }
+    .santi-tab.active::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 20px; height: 2px; background: var(--tab-color); border-radius: 2px; }
+    .santi-tab .lock-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.35; flex-shrink: 0; }
+    .santi-session { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 18px; background: rgba(0,255,200,0.06); border: 1px solid rgba(0,255,200,0.2); font-family: monospace; font-size: 8px; color: #00ffcc; }
+    .santi-session strong { color: #c8a84b; }
+    .santi-body { padding-top: 46px; height: 100%; }
+    @keyframes santi-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .santi-live { animation: santi-pulse 2s ease-in-out infinite; }
+  `;
+  document.head.appendChild(s);
+}
+
+
+class Map3DErrorBoundary extends React.Component {
+  constructor(p){super(p);this.state={crashed:false};}
+  static getDerivedStateFromError(){return {crashed:true};}
+  componentDidCatch(){setTimeout(()=>this.setState({crashed:false}),100);}
+  render(){if(this.state.crashed)return null;return this.props.children;}
+}
 function App() {
-  const [view, setView] = useState<"citizen" | "command">("citizen");
+  const [session,     setSession]     = useState<SessionAuth | null>(null);
+  const [view,        setView]        = useState<View>("citizen");
+  const [pendingView, setPendingView] = useState<View | null>(null);
+  const isAuth = (view as string) === "__auth__";
+
+  const handleTabClick = (id: View) => {
+    const tab = TABS.find((t) => t.id === id);
+    if (tab?.gated && !session) {
+      setView("__auth__" as View);
+      setPendingView(id);
+    } else {
+      setView(id);
+    }
+  };
+
+  const handleAuthenticated = (s: SessionAuth) => {
+    setSession(s);
+    const corp = (s as any).corp ? ` · ${(s as any).corp}` : "";
+    const mat  = (s as any).matricula ? ` [${(s as any).matricula}]` : "";
+    console.info(`[SANTI NEXUS] Acceso autorizado. ${s.analyst}${mat}${corp}. Caso: ${s.caseId}. Hash: ${s.sessionHash.slice(0,16)}â€¦`);
+    setView(pendingView ?? "command");
+    setPendingView(null);
+  };
+
+  const groups = (["ops", "intel", "field"] as Tab["group"][]);
 
   return (
     <div className="App">
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          zIndex: 9999,
-          backgroundColor: "rgba(0,0,0,0.9)",
-          padding: "10px",
-          borderRadius: "8px",
-          display: "flex",
-          gap: "10px",
-          border: "1px solid #333",
-        }}
-      >
-        <button
-          onClick={() => setView("citizen")}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: view === "citizen" ? "#00ffcc" : "#222",
-            color: view === "citizen" ? "#000" : "#fff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          Vista Ciudadano
-        </button>
-        <button
-          onClick={() => setView("command")}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: view === "command" ? "#00ffcc" : "#222",
-            color: view === "command" ? "#000" : "#fff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          Vista Mando (CNI)
-        </button>
+      <ApiStatusBar />
+      {!isAuth && (
+        <nav className="santi-nav">
+          <div className="santi-logo">
+            <div style={{ position: "relative", width: 26, height: 26 }}>
+              <svg viewBox="0 0 26 26" width="26" height="26">
+                <circle cx="13" cy="13" r="11" fill="none" stroke="rgba(0,255,200,0.6)" strokeWidth="1.2"/>
+                <circle cx="13" cy="13" r="7"  fill="none" stroke="rgba(0,255,200,0.3)" strokeWidth="0.8"/>
+                <line x1="13" y1="2"  x2="13" y2="24" stroke="rgba(0,255,200,0.25)" strokeWidth="0.6"/>
+                <line x1="2"  y1="13" x2="24" y2="13" stroke="rgba(0,255,200,0.25)" strokeWidth="0.6"/>
+                <circle cx="13" cy="13" r="2.5" fill="#00ffcc" opacity="0.8"/>
+              </svg>
+              <div className="santi-live" style={{ position:"absolute", top:0, right:0, width:5, height:5, borderRadius:"50%", background:"#00ffcc" }} />
+            </div>
+            <div>
+              <div className="santi-logo-text">SANTI NEXUS</div>
+              <div className="santi-logo-sub">C.M.O. · ZERO TRUST</div>
+            </div>
+          </div>
+
+          {groups.map((grp) => {
+            const tabs = TABS.filter((t) => t.group === grp);
+            return (
+              <div key={grp} className="santi-nav-group">
+                <span className="santi-nav-group-label">{GROUP_LABELS[grp]}</span>
+                {tabs.map((t) => {
+                  const active = view === t.id;
+                  const bgAlpha = active ? "22" : "00";
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => handleTabClick(t.id)}
+                      className={`santi-tab${active ? " active" : ""}`}
+                      style={{
+                        "--tab-color":    t.color,
+                        "--tab-color-bg": `${t.color}${bgAlpha}`,
+                        color: active ? t.color : `${t.color}80`,
+                      } as React.CSSProperties}
+                      title={t.label}
+                    >
+                      <span style={{ fontSize: 11 }}>{t.icon}</span>
+                      <span>{t.label}</span>
+                      {t.gated && !session && <span className="lock-dot" />}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          {session && (
+            <div className="santi-session">
+              <span>âœ…</span>
+              <strong>{session.analyst}</strong>
+              {(session as any).corp && (
+                <span style={{ color: "#3a6a5a" }}>{(session as any).corp}</span>
+              )}
+              <span style={{ color: "#2a4a3a" }}>·</span>
+              <span style={{ color: "#c8a84b" }}>{session.caseId}</span>
+              <button
+                onClick={() => setSession(null)}
+                title="Cerrar sesión"
+                style={{ background: "none", border: "none", color: "rgba(255,23,68,0.45)", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1 }}
+              >âœ•</button>
+            </div>
+          )}
+        </nav>
+      )}
+
+      <div className="santi-body">
+        {isAuth      && <AuthBiometrico onAuthenticated={handleAuthenticated} />}
+        {!isAuth && view === "citizen"   && <CitizenView />}
+        {!isAuth && view === "command"   && <CommandView />}
+        {!isAuth && <Map3DErrorBoundary><div key="map3d-container" style={{width:"100%",height:"100%",display:view==="map3d"?"block":"none"}}><TacticalMap3D /></div></Map3DErrorBoundary>}
+        {!isAuth && view === "governance"     && <GovernanceView />}
+        {!isAuth && view === "forensic"  && <ForensicView />}
+        {!isAuth && view === "links"     && <LinkAnalysisView />}
+        {!isAuth && view === "sabana"    && <SabanaAnalyzer />}
+        {!isAuth && view === "agentes"   && <AgenteAvatar />}
+        {!isAuth && view === "osint"     && <OSINTView />}
+        {!isAuth && view === "guardian"  && <CitizenGuardian />}
+        {!isAuth && view === "education" && <EducationView />}
+        {!isAuth && view === "cases"     && <CasesView />}
       </div>
-      {view === "citizen" ? <CitizenView /> : <CommandView />}
-    </div>
+          <IbmNexusBar />
+      </div>
   );
 }
+
 export default App;

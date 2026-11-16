@@ -1,0 +1,1 @@
+﻿const fs=require("fs");const l=fs.readFileSync("SabanaAnalyzer.tsx","utf8").split("\n");l[456]=l[456].replace("rows.length === 0 ? (","rows.length === 0 && (");l[504]=l[504].replace("))}",")}");fs.writeFileSync("SabanaAnalyzer.tsx",l.join("\n"));console.log("OK",l.length,l[456],l[504]);

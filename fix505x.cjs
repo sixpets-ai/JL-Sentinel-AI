@@ -1,0 +1,1 @@
+﻿const fs=require("fs");const l=fs.readFileSync("SabanaAnalyzer.tsx","utf8").split("\n");console.log("L505 actual:",JSON.stringify(l[504]));l[504]=l[504].replace("]}", "])}");fs.writeFileSync("SabanaAnalyzer.tsx",l.join("\n"));console.log("L505 nuevo:",JSON.stringify(l[504]));
