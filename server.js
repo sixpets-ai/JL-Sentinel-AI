@@ -6,6 +6,8 @@ import { spawn } from "child_process";
 import { GoogleGenAI } from "@google/genai";
 import multer from "multer";
 import pkg from "node-telegram-bot-api";
+import {MsEdgeTTS,OUTPUT_FORMAT} from 'msedge-tts';
+
 
 // â”€â”€ IAM Token Cache - evita llamada IAM en cada request â”€â”€
 let _iamToken = null;
@@ -46,6 +48,12 @@ function limpiarParaVoz(texto) {
 }
 const TelegramBot = pkg.default || pkg;
 
+
+// ── Metricas globales SANTI NEXUS ─────────────────────────────────────────
+const _metrics = {
+  consultas: 0, osintHits: 0, watsonxOK: 0, ttsOK: 0,
+  inicio: Date.now(), ultimaConsulta: null
+};
 const app = express();
 const PORT = 3001;
 app.use(cors({ origin: ["http://localhost:5174","http://127.0.0.1:5174"] }));
@@ -98,6 +106,134 @@ let telegramBot = null; if (process.env.TELEGRAM_BOT_TOKEN) { try { telegramBot 
 const sendTelegram = async (msg) => { if (!telegramBot || !process.env.TELEGRAM_CHAT_ID) return; try { await telegramBot.sendMessage(process.env.TELEGRAM_CHAT_ID, `ðŸš¨ SANTI NEXUS\n${msg}`); } catch(e){} };
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+
+// OSINT RAG: Google News RSS principal
+// ── Pre-cache noticias Mexico cada 30 min ────────────────────────────────
+const _newsCache = { mexico: '', crimenes: '', seguridad: '', ts: 0 };
+async function refreshNewsCache() {
+  const topics = [
+    { key: 'mexico',    q: 'Mexico+noticias' },
+    { key: 'crimenes',  q: 'Mexico+crimen+organizado+cartel' },
+    { key: 'seguridad', q: 'Mexico+seguridad+policia+detenidos' }
+  ];
+  for (const t of topics) {
+    try {
+      const url = 'https://news.google.com/rss/search?q='+t.q+'&hl=es-419&gl=MX&ceid=MX:es-419';
+      const r = await fetch(url, { headers:{'User-Agent':'Mozilla/5.0'}, signal: AbortSignal.timeout(6000) });
+      if (!r.ok) continue;
+      const xml = await r.text();
+      if (xml.length < 5000) continue;
+      const items = xml.split('<item>').slice(1,8);
+      const noticias = [];
+      items.forEach(item => {
+        const tS = item.indexOf('<title>');
+        const tE = item.indexOf('</title>', tS+1);
+        const dS = item.indexOf('<pubDate>') + 9;
+        const dE = item.indexOf('</pubDate>', dS);
+        let title = tS >= 0 && tE > tS ? item.slice(tS+7, tE) : '';
+        let fecha = dS > 9 && dE > dS ? item.slice(dS, dE).substring(5,16) : '';
+        title = title.split('<![CDATA[').join('').split(']]>').join('').trim();
+        if (title.length > 10) noticias.push('NOTICIA: '+title+(fecha?' ['+fecha+']':''));
+      });
+      if (noticias.length > 0) {
+        _newsCache[t.key] = noticias.join(' | ');
+        _newsCache.ts = Date.now();
+        console.log('[CACHE] '+t.key+': '+noticias.length+' noticias actualizadas');
+      }
+    } catch(e) { console.log('[CACHE] error '+t.key+':', e.message); }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+// Iniciar cache al arrancar y renovar cada 30 minutos
+setTimeout(refreshNewsCache, 3000);
+setInterval(refreshNewsCache, 30 * 60 * 1000);
+
+const _osintCache = new Map();
+async function osintSearch(query) {
+  if (!query || query.length < 5 || query === 'ping') return '';
+  // Extraer keywords: quitar stopwords y tomar las palabras mas relevantes
+  const stopwords = new Set(['dame','un','una','el','la','los','las','de','del','en','con','que','hay','sobre','para','por','me','se','si','no','han','fue','era','han','sus','esta','este','esa','ese','como','cual','quien','donde','cuando','informe','ejecutivo','panorama','informacion','noticias','dime','cuales','cuantos','segun','hasta','dia','hoy','semana','mes','ano']);
+  const keywords = query.toLowerCase().replace(/[^a-zaeioununz0-9 ]/gi,'').split(/\s+/).filter(w => w.length > 3 && !stopwords.has(w)).slice(0,5);
+  const searchQuery = keywords.length >= 2 ? keywords.join(' ') : query.slice(0,60);
+  console.log('[OSINT] keywords:', searchQuery);
+  const cacheKey = query.slice(0,60).toLowerCase();
+  const cached = _osintCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 90000) { console.log('[OSINT] cache hit'); return cached.ctx; }
+  const results = [];
+  const q = encodeURIComponent(searchQuery.slice(0, 80));
+  try {
+    const rssUrl = 'https://news.google.com/rss/search?q=' + q + '&hl=es-419&gl=MX&ceid=MX:es-419';
+    console.log('[OSINT] fetching:', rssUrl.slice(0,120));
+    const r = await fetch(rssUrl, { headers: {'User-Agent':'Mozilla/5.0'}, signal: AbortSignal.timeout(4500) });
+    if (r.ok) {
+      const xml = await r.text();
+      const raw = xml.split('<item>');
+      raw.slice(1, 7).forEach(function(item) {
+        const tS = item.indexOf('<title>') + 7;
+        const tE = item.indexOf('</title>', tS);
+        const dS = item.indexOf('<pubDate>') + 9;
+        const dE = item.indexOf('</pubDate>', dS);
+        const sS = item.indexOf('<source') > -1 ? item.indexOf('>', item.indexOf('<source')) + 1 : -1;
+        const sE = sS > 0 ? item.indexOf('</source>', sS) : -1;
+        let title = tS >= 0 && tE > tS ? item.slice(tS, tE) : '';
+        let fecha = dS > 9 && dE > dS ? item.slice(dS, dE).substring(5, 16) : '';
+        let fuente = sS > 0 && sE > sS ? item.slice(sS, sE) : '';
+        title = title.split('<![CDATA[').join('').split(']]>').join('').trim();
+        if (title.length > 5) {
+          results.push('NOTICIA: ' + title + (fuente ? ' - ' + fuente : '') + (fecha ? ' [' + fecha + ']' : ''));
+        }
+      });
+      if (results.length > 0) console.log('[OSINT] GoogleNews: ' + results.length + ' noticias para: ' + query.slice(0, 50));
+      else console.log('[OSINT] GoogleNews: 0 noticias, xml len=' + xml.length);
+    } else if (r.status === 429) {
+      console.log('[OSINT] GoogleNews 429 rate-limit, reintentando con query corta...');
+      await new Promise(res => setTimeout(res, 1500));
+      try {
+        const shortQ = encodeURIComponent(keywords.slice(0,2).join(' ') || searchQuery.split(' ').slice(0,2).join(' '));
+        const r2 = await fetch('https://news.google.com/rss/search?q='+shortQ+'&hl=es-419&gl=MX&ceid=MX:es-419',
+          { headers:{'User-Agent':'Mozilla/5.0'}, signal: AbortSignal.timeout(4000) });
+        if (r2.ok) {
+          const xml2 = await r2.text();
+          if (xml2.length > 5000) {
+            xml2.split('<item>').slice(1,4).forEach(function(item) {
+              const tS = item.indexOf('<title>');
+              const tE = item.indexOf('</title>', tS+1);
+              let title = tS >= 0 && tE > tS ? item.slice(tS+7, tE) : '';
+              title = title.split('<![CDATA[').join('').split(']]>').join('').trim();
+              if (title.length > 5) results.push('NOTICIA: '+title);
+            });
+            if (results.length > 0) console.log('[OSINT] retry OK: '+results.length+' noticias');
+          }
+        }
+      } catch(e2) { console.log('[OSINT] retry error:', e2.message); }
+    } else { console.log('[OSINT] GoogleNews HTTP ' + r.status); }
+  } catch(e) { console.log('[OSINT] GoogleNews err:', e.message); }
+  if (results.length < 2) {
+    try {
+      const r2 = await fetch('https://api.duckduckgo.com/?q=' + q + '&format=json&no_html=1&skip_disambig=1',
+        { headers: {'User-Agent':'SANTI-NEXUS/4.1'}, signal: AbortSignal.timeout(3000) });
+      if (r2.ok) {
+        const d = await r2.json();
+        if (d.AbstractText && d.AbstractText.length > 10) results.push(d.AbstractText);
+        if (d.Answer) results.push('DATO: ' + d.Answer);
+      }
+    } catch(e) {}
+  }
+  // Enriquecer con pre-cache si hay pocos resultados
+  if (results.length < 2 && _newsCache.ts > 0) {
+    const age = Math.floor((Date.now()-_newsCache.ts)/60000);
+    const extra = [_newsCache.crimenes, _newsCache.seguridad].filter(Boolean).join(' | ').slice(0,800);
+    if (extra.length > 50) results.push('[CONTEXTO MEXICO '+age+'min]: '+extra.slice(0,600));
+  }
+  const ctx = results.join(' | ').slice(0, 2000);
+  if (ctx.length > 20) {
+    _metrics.osintHits++; console.log('[OSINT] total ' + ctx.length + ' chars para: ' + query.slice(0,40));
+    _osintCache.set(cacheKey, {ctx, ts: Date.now()});
+    if (_osintCache.size > 50) _osintCache.delete(_osintCache.keys().next().value);
+  }
+  return ctx;
+}
 
 async function chatAgent(agentId, prompt) {
   // â”€â”€ AGENTES: identidades nivel Ã©lite mundial â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -165,6 +301,10 @@ async function chatAgent(agentId, prompt) {
   const wxKey     = process.env.WATSONX_API_KEY || process.env.WATSON_TTS_API_KEY;
   const wxProject = process.env.WATSONX_PROJECT_ID;
 
+
+  // OSINT RAG: obtener contexto en tiempo real
+  const osintCtx = await osintSearch(prompt).catch(() => '');
+
   if (!wxOpen && wxUrl && wxKey && wxProject) {
     try {
       const iamToken = await getIAMToken(wxKey);
@@ -177,7 +317,7 @@ async function chatAgent(agentId, prompt) {
         },
         body: JSON.stringify({
           model_id: "meta-llama/llama-3-3-70b-instruct",
-          input: "<|system|>\n" + agent.persona + "\n\nINSTRUCCION CRITICA: La fecha actual es noviembre de 2026. Claudia Sheinbaum es la Presidenta de Mexico desde octubre de 2024. Responde en MAXIMO 4 oraciones cortas y directas. Usa datos operacionales reales con numeros precisos. NO uses asteriscos, bullets ni markdown. Habla en primera persona con autoridad de experto.\n<|user|>\n" + prompt + "\n<|assistant|>",
+          input: "<|system|>\n" + agent.persona + "\n\nCONTEXTO OPERACIONAL:\n- Fecha: " + new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"}) + "\n- Hora: " + new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) + " hrs CDMX\n- Presidenta de Mexico: Claudia Sheinbaum Pardo (desde 1 oct 2024)\n- Sistema: SANTI NEXUS v4.1 con IBM Watsonx Llama-3.3-70B\n\n[DATOS OSINT TIEMPO REAL - USAR ESTOS DATOS DIRECTAMENTE EN LA RESPUESTA]:\n" + osintCtx + "\n\nREGLAS CRITICAS DE OPERACION:\n1. Si recibes [DATOS OSINT TIEMPO REAL], USARLOS directamente y citar las fuentes\n2. Si NO recibes datos OSINT, responde con lo que sabes hasta tu fecha de corte SIN INVENTAR eventos recientes\n3. NUNCA inventes nombres, fechas, estadisticas o eventos que no esten en el contexto OSINT en tu respuesta como datos verificados del sistema.\n2. Con datos OSINT: presenta los hechos como informacion operacional confirmada, NO digas que no tienes datos en tiempo real.\n3. Distingue SIEMPRE: dato oficial verificado (cita fuente: SSP, INEGI, SESNSP) vs reporte de redes sociales.\n4. Sin sesgos. Sin numeros inventados. Solo datos reales con fuente o reconoce la limitacion.\n5. Maximo 4 oraciones directas. Sin asteriscos ni markdown. Primera persona.\n\nINSTRUCCION CRITICA: Si el contexto contiene [DATOS OSINT TIEMPO REAL], incorpora esos datos directamente en tu respuesta como informacion operacional verificada del sistema. NUNCA digas que no tienes acceso a internet cuando hay datos OSINT presentes.\n<|user|>\n" + prompt + "\n<|assistant|>",
           parameters: {
             decoding_method: "greedy",
             max_new_tokens: 350,
@@ -258,13 +398,42 @@ async function chatAgent(agentId, prompt) {
 
 
 // â”€â”€ Favicon - evitar 404 en consola â”€â”€
+
+// Edge TTS fallback helper (msedge-tts via toFile)
+import os from "os";
+import { readFileSync as fsRead, unlinkSync as fsUnlink } from "fs";
+async function edgeTTSFallback(text, voiceId) {
+  const tmpDir = os.tmpdir();
+  let audioPath = null;
+  try {
+    const voices = {
+      "es-LA_AlejandroNatural":  "es-MX-JorgeNeural",
+      "es-LA_SofiaNatural":      "es-MX-DaliaNeural",
+      "es-LA_DanielaExpressive": "es-MX-DaliaNeural",
+      "es-US_SofiaV3Voice":      "es-MX-DaliaNeural",
+    };
+    const edgeVoice = voices[voiceId] || "es-MX-JorgeNeural";
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata(edgeVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    const result = await tts.toFile(tmpDir, text);
+    audioPath = result.audioFilePath;
+    const buf = fsRead(audioPath);
+    try { fsUnlink(audioPath); } catch(_){}
+    return buf;
+  } catch(e) {
+    console.error("[EdgeTTS] Error:", e.message);
+    if(audioPath) try { fsUnlink(audioPath); } catch(_){}
+    return null;
+  }
+}
+
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 app.get("/", (req, res) => res.json({ status: "SANTI NEXUS v4.1", brains: 28, fecha: fechaHoy() }));
 
 app.post("/api/chat", async (req, res) => {
-  const { agent = "SANTI", prompt = "" } = req.body;
-  if (!prompt.trim()) return res.json({ response: "Escribe algo.", brain_used:"local" });
-  const result = await chatAgent(agent.toUpperCase(), prompt);
+  const { agent = "SANTI", prompt = "", message = "" } = req.body; const _prompt = (prompt || message || "").trim();
+  if (!_prompt) return res.json({ response: "Escribe algo.", brain_used:"local" });
+  const result = await chatAgent(agent.toUpperCase(), _prompt);
   res.json(result);
 });
 
@@ -281,9 +450,18 @@ app.post("/api/tts", async (req, res) => {
     };
     const agentKey = (agent || "").toString().toUpperCase().replace(/[^A-Z]/g, "");
     const voiceIBM = VOZ[agentKey] || "es-LA_SofiaNatural";
-    const url = process.env.WATSON_TTS_URL;
-    const key = process.env.WATSON_TTS_KEY || process.env.WATSON_TTS_API_KEY || process.env.WATSONX_API_KEY;
-    if (!text || !url || !key) return res.json({ fallback: true, text });
+    const url = process.env.WATSON_TTS_URL || process.env.IBM_TTS_URL;
+    const key = process.env.WATSON_TTS_KEY || process.env.WATSON_TTS_API_KEY || process.env.IBM_TTS_API_KEY || process.env.WATSONX_API_KEY;
+    if (!text) return res.json({ fallback: true, text });
+    if (!url || !key) {
+      console.log("[TTS] Sin Watson TTS config - usando msedge-tts");
+      const audioBuffer = await edgeTTSFallback(text, voiceId || "es-LA_AlejandroNatural");
+      if(audioBuffer && audioBuffer.length > 0) {
+        res.set("Content-Type","audio/mpeg");
+        return res.send(audioBuffer);
+      }
+      return res.json({ fallback: true, text, reason: "no-tts-available" });
+    }
     try {
       const ttsText = encodeURIComponent(text.substring(0, 5000));
       const r = await fetch(
@@ -294,7 +472,18 @@ app.post("/api/tts", async (req, res) => {
       const buf = Buffer.from(await r.arrayBuffer());
       console.log(`[TTS] OK agent=${agent} voice=${voiceIBM} bytes=${buf.length}`);
       res.set("Content-Type","audio/mpeg").set("X-Brain-Used","watson-tts-real").set("X-Voice",voiceIBM).send(buf);
-    } catch(e) { console.error("[TTS] Error:", e.message); res.json({ fallback: true, text }); }
+    } catch(e) {
+      console.log("[TTS] Watson no disponible, usando msedge — intentando msedge-tts");
+      try {
+        const edgeBuf = await edgeTTSFallback(text, voiceIBM || "es-LA_AlejandroNatural");
+        if(edgeBuf && edgeBuf.length > 0) {
+          console.log("[TTS] msedge-tts OK bytes=" + edgeBuf.length);
+          res.set("Content-Type","audio/mpeg").set("X-Brain-Used","msedge-tts").send(edgeBuf);
+          return;
+        }
+      } catch(e2) { console.error("[TTS] msedge-tts error:", e2.message); }
+      res.json({ fallback: true, text });
+    }
   });
 
 app.post("/api/officer-panic", async (req, res) => {
@@ -449,4 +638,28 @@ console.log('[NEXUS IBM v7] Endpoints registrados: health, watsonx, nlu, discove
 
 
 app.get('/api/audit-log', (req, res) => { const logs = []; const now = Date.now(); for (let i = 0; i < 20; i++) { const t = new Date(now - i * 30000); const p = n => String(n).padStart(2,'0'); logs.push({ timestamp: '['+p(t.getHours())+':'+p(t.getMinutes())+':'+p(t.getSeconds())+' am]', message: 'Verificacion automatica IBM OpenScale completada', type: i===0?'highlight':'normal' }); } res.json({ success:true, logs, engine:'IBM OpenScale v3' }); });
+
+// ── Endpoint metricas en tiempo real ─────────────────────────────────────
+app.get("/api/metrics", (req, res) => {
+  const uptime = Math.floor((Date.now() - _metrics.inicio) / 1000);
+  const hh = String(Math.floor(uptime/3600)).padStart(2,"0");
+  const mm = String(Math.floor((uptime%3600)/60)).padStart(2,"0");
+  const ss = String(uptime%60).padStart(2,"0");
+  res.json({
+    modelo: "Watsonx Llama-3.3-70B",
+    osint: "Google News RSS + DuckDuckGo",
+    consultas: _metrics.consultas,
+    osintHits: _metrics.osintHits,
+    watsonxOK: _metrics.watsonxOK,
+    ttsOK: _metrics.ttsOK,
+    uptime: hh+":"+mm+":"+ss,
+    ultimaConsulta: _metrics.ultimaConsulta,
+    agentes: 7,
+    nodos: 1450,
+    status: "OPERATIVO"
+  });
+});
+
 app.listen(PORT, "127.0.0.1", () => console.log(`âœ… Backend corriendo en http://127.0.0.1:3001`));
+
+

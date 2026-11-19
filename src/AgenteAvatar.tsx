@@ -1,3 +1,4 @@
+import HolographicAvatar from "../HolographicAvatar";
 // ══════════════════════════════════════════════════════════════════════════════
 // AgenteAvatar.tsx — SANTI NEXUS v4.3
 // Payload CORRECTO: POST /api/chat { agent: string, prompt: string }
@@ -176,13 +177,19 @@ const motorVoz = async (texto: string, agente: string, genero: "m" | "f") => {
       signal: AbortSignal.timeout(4000),
     });
     if (r.ok) {
-      const blob = await r.blob();
-      if (blob.size > 200) {
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.onended = () => URL.revokeObjectURL(url);
-        audio.onerror = () => { URL.revokeObjectURL(url); vozLocal(texto, agente, genero); };
-        try { await audio.play(); return; } catch {}
+      const ct = r.headers.get("content-type") || "";
+      if (ct.includes("audio")) {
+        const blob = await r.blob();
+        if (blob.size > 1000) {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          await new Promise<void>((resolve) => {
+            audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+            audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+            audio.play().catch(() => resolve());
+          });
+          return;
+        }
       }
     }
   } catch {}
@@ -222,6 +229,7 @@ export const AgenteAvatar = memo(({ agenteId = "SANTI" }: Props) => {
   const [input, setInput]       = useState("");
   const [cargando, setCargando] = useState(false);
   const [sttActivo, setSttActivo] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [silenciado, setSilenciado] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -258,7 +266,7 @@ export const AgenteAvatar = memo(({ agenteId = "SANTI" }: Props) => {
         n[n.length - 1] = { rol: "agent", texto: respuesta };
         return n;
       });
-      if (!silenciado) await motorVoz(respuesta, cfg.nombre, cfg.genero);
+      if (!silenciado) { setIsSpeaking(true); await motorVoz(respuesta, cfg.nombre, cfg.genero); setIsSpeaking(false); }
     } catch {
       const fb = getFallback(agenteId);
       setMensajes(prev => {
@@ -286,15 +294,8 @@ export const AgenteAvatar = memo(({ agenteId = "SANTI" }: Props) => {
         padding: "14px 18px", borderBottom: `1px solid ${cfg.color}33`,
         background: "#0b1120",
       }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: "50%",
-          border: `2px solid ${cfg.color}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "1.4rem", background: `${cfg.color}11`,
-          boxShadow: `0 0 14px ${cfg.color}55`,
-          animation: "pulse 3s ease-in-out infinite",
-        }}>
-          {cfg.icono}
+        <div style={{ width: 164, height: 164, flexShrink: 0 }}>
+          <HolographicAvatar agentId={agenteId} agentColor={cfg.color} isSpeaking={isSpeaking} isListening={sttActivo} size={164} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ color: cfg.color, fontWeight: "bold", fontSize: "1rem", letterSpacing: "0.1em" }}>

@@ -72,7 +72,7 @@ if (typeof document !== "undefined") {
     .santi-tab .lock-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.35; flex-shrink: 0; }
     .santi-session { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 18px; background: rgba(0,255,200,0.06); border: 1px solid rgba(0,255,200,0.2); font-family: monospace; font-size: 8px; color: #00ffcc; }
     .santi-session strong { color: #c8a84b; }
-    .santi-body { padding-top: 46px; height: 100%; }
+    .santi-body { padding-top: 46px; height: calc(100% - 46px); box-sizing: border-box; }
     @keyframes santi-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
     .santi-live { animation: santi-pulse 2s ease-in-out infinite; }
   `;
@@ -188,7 +188,7 @@ function App() {
         {isAuth      && <AuthBiometrico onAuthenticated={handleAuthenticated} />}
         {!isAuth && view === "citizen"   && <CitizenView />}
         {!isAuth && view === "command"   && <CommandView />}
-        {!isAuth && <Map3DErrorBoundary><div key="map3d-container" style={{width:"100%",height:"100%",display:view==="map3d"?"block":"none"}}><TacticalMap3D /></div></Map3DErrorBoundary>}
+        {!isAuth && <Map3DErrorBoundary><div key="map3d-container" style={{width:"100%",height:"calc(100vh - 46px)",display:view==="map3d"?"block":"none",overflow:"hidden"}}><TacticalMap3D /></div></Map3DErrorBoundary>}
         {!isAuth && view === "governance"     && <GovernanceView />}
         {!isAuth && view === "forensic"  && <ForensicView />}
         {!isAuth && view === "links"     && <LinkAnalysisView />}
@@ -205,3 +205,6 @@ function App() {
 }
 
 export default App;
+
+
+
